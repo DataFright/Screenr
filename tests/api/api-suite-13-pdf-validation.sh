@@ -5,8 +5,10 @@
 # Tests fake PDF detection, magic number validation, and PDF structure checks
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
-TEST_DIR="/home/z/my-project/tests/fixtures/pdf-validation"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
+
+TEST_DIR="$TEST_FIXTURES_DIR/pdf-validation"
 
 # Colors
 RED='\033[0;31m'

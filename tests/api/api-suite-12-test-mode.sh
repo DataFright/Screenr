@@ -5,7 +5,10 @@
 # Tests the X-Test-Mode header functionality for rate limit bypass
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
+
+TEST_RESUME="$TEST_FIXTURES_DIR/test_resume.pdf"
 
 # Colors
 RED='\033[0;31m'
@@ -31,7 +34,7 @@ for i in {1..10}; do
         -H "X-Test-Mode: true" \
         -F "jobTitle=Test" \
         -F "jobDescription=Test description here" \
-        -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+        -F "files=@$TEST_RESUME" \
         --max-time 30 2>/dev/null)
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     
@@ -54,7 +57,7 @@ RESPONSE=$(curl -s -D - -X POST "$BASE_URL/api/grade" \
     -H "X-Test-Mode: true" \
     -F "jobTitle=Test" \
     -F "jobDescription=Test description here" \
-    -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+    -F "files=@$TEST_RESUME" \
     --max-time 30 2>/dev/null)
 
 if echo "$RESPONSE" | grep -qi "x-test-mode"; then
@@ -77,7 +80,7 @@ for i in {1..8}; do
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/grade" \
         -F "jobTitle=Test" \
         -F "jobDescription=Test description here" \
-        -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+        -F "files=@$TEST_RESUME" \
         --max-time 10 2>/dev/null)
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     
@@ -122,7 +125,7 @@ for i in {1..5}; do
         -H "X-Test-Mode: true" \
         -F "jobTitle=Test $i" \
         -F "jobDescription=Concurrent test $i" \
-        -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+        -F "files=@$TEST_RESUME" \
         --max-time 30 \
         -o /dev/null &
 done
@@ -147,7 +150,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/grade" \
     -H "x-test-mode: true" \
     -F "jobTitle=Test" \
     -F "jobDescription=Test description here" \
-    -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+    -F "files=@$TEST_RESUME" \
     --max-time 30 2>/dev/null)
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 
@@ -165,7 +168,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/grade" \
     -H "X-Test-Mode: invalid" \
     -F "jobTitle=Test" \
     -F "jobDescription=Test description here" \
-    -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+    -F "files=@$TEST_RESUME" \
     --max-time 30 2>/dev/null)
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 

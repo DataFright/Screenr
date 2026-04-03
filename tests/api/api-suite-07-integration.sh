@@ -5,9 +5,11 @@
 # Includes X-Test-Mode header to bypass rate limiting during tests
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
-REAL_RESUME_DIR="/home/z/my-project/cypress/fixtures/test-data/resumes"
-RESUME_DIR="/home/z/my-project/cypress/fixtures/test-data/resumes"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
+
+REAL_RESUME_DIR="$CYPRESS_RESUME_DIR"
+RESUME_DIR="$CYPRESS_RESUME_DIR"
 
 # Colors
 RED='\033[0;31m'

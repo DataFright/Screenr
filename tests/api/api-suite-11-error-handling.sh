@@ -4,7 +4,8 @@
 # Error Handling Test Suite - Tests for comprehensive error scenarios
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -106,13 +107,14 @@ fi
 # Test E.6: Invalid File Type
 # ============================================================================
 echo -e "\n${CYAN}Test E.6: Invalid File Type${NC}"
-echo "This is not a PDF" > /tmp/test.txt
+INVALID_FILE="$TMP_DIR/error-handling-test.txt"
+echo "This is not a PDF" > "$INVALID_FILE"
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -F "jobTitle=Software Engineer" \
   -F "jobDescription=Valid job description for testing purposes" \
-  -F "files=@/tmp/test.txt" \
+    -F "files=@$INVALID_FILE" \
   --max-time 10)
-rm /tmp/test.txt
+rm -f "$INVALID_FILE"
 if echo "$RESPONSE" | grep -q '"success":false\|Invalid\|error'; then
     echo -e "${GREEN}✓ PASS${NC} - Non-PDF file rejected"
     PASSED=$((PASSED + 1))
@@ -125,13 +127,14 @@ fi
 # Test E.7: Empty PDF File
 # ============================================================================
 echo -e "\n${CYAN}Test E.7: Empty PDF File${NC}"
-touch /tmp/empty.pdf
+EMPTY_PDF="$TMP_DIR/error-handling-empty.pdf"
+: > "$EMPTY_PDF"
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -F "jobTitle=Software Engineer" \
   -F "jobDescription=Valid job description for testing purposes" \
-  -F "files=@/tmp/empty.pdf" \
+    -F "files=@$EMPTY_PDF" \
   --max-time 10)
-rm /tmp/empty.pdf
+rm -f "$EMPTY_PDF"
 # Should handle gracefully - either error or empty results
 if echo "$RESPONSE" | grep -q '"success":true\|Invalid\|error\|too small\|No Text'; then
     echo -e "${GREEN}✓ PASS${NC} - Empty file handled gracefully"
@@ -145,13 +148,14 @@ fi
 # Test E.8: Corrupted PDF (Not a real PDF)
 # ============================================================================
 echo -e "\n${CYAN}Test E.8: Corrupted PDF (Not a real PDF)${NC}"
-echo "This is fake PDF content" > /tmp/fake.pdf
+FAKE_PDF="$TMP_DIR/error-handling-fake.pdf"
+echo "This is fake PDF content" > "$FAKE_PDF"
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -F "jobTitle=Software Engineer" \
   -F "jobDescription=Valid job description for testing purposes" \
-  -F "files=@/tmp/fake.pdf" \
+    -F "files=@$FAKE_PDF" \
   --max-time 10)
-rm /tmp/fake.pdf
+rm -f "$FAKE_PDF"
 if echo "$RESPONSE" | grep -q 'Invalid PDF\|not a valid PDF\|error'; then
     echo -e "${GREEN}✓ PASS${NC} - Fake PDF rejected with magic number validation"
     PASSED=$((PASSED + 1))
@@ -227,7 +231,7 @@ RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -H "X-Test-Mode: true" \
   -F "jobTitle=Software Engineer" \
   -F "jobDescription=Looking for an experienced software engineer" \
-  -F "files=@/home/z/my-project/tests/fixtures/valid_resume.pdf" \
+    -F "files=@$TEST_FIXTURES_DIR/valid_resume.pdf" \
   --max-time 60)
 HAS_SUCCESS=$(echo "$RESPONSE" | grep -c '"success":true')
 HAS_RESULTS=$(echo "$RESPONSE" | grep -c '"results"')

@@ -50,7 +50,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.openai.com",
+              "connect-src 'self' https://openrouter.ai",
               // frame-ancestors removed for sandbox preview compatibility
               // In production, use: "frame-ancestors 'self'"
               "base-uri 'self'",

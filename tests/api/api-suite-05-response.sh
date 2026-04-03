@@ -4,8 +4,10 @@
 # API Test Suite 5: Response Validation Tests (Tests 5.1 - 5.10)
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
-RESUME_DIR="/home/z/my-project/cypress/fixtures/test-data/resumes"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
+
+RESUME_DIR="$CYPRESS_RESUME_DIR"
 
 # Colors
 RED='\033[0;31m'

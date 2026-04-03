@@ -1,7 +1,7 @@
 /**
- * @fileoverview Middleware for rate limiting and request handling
+ * @fileoverview Proxy for rate limiting and request handling
  * 
- * This middleware provides:
+ * This proxy provides:
  * - IP-based rate limiting for API endpoints
  * - Stricter rate limits for resource-intensive operations (file uploads)
  * - Rate limit headers in responses for client awareness
@@ -18,7 +18,7 @@
  * Note: This uses in-memory storage which resets on server restart.
  * For production, consider using Redis or a distributed store.
  * 
- * @module middleware
+ * @module proxy
  * @requires next/server - NextResponse, NextRequest
  */
 
@@ -108,8 +108,8 @@ function getClientIP(request: NextRequest): string {
  * @returns Object with allowed status, remaining requests, and reset time
  */
 function checkRateLimit(
-  ip: string, 
-  endpoint: string, 
+  ip: string,
+  endpoint: string,
   maxRequests: number
 ): { allowed: boolean; remaining: number; resetTime: number } {
   // Create unique key for this IP + endpoint combination
@@ -137,7 +137,7 @@ function checkRateLimit(
 }
 
 // ============================================================================
-// MIDDLEWARE HANDLER
+// PROXY HANDLER
 // ============================================================================
 
 /**
@@ -153,7 +153,7 @@ function isTestMode(request: NextRequest): boolean {
 }
 
 /**
- * Main middleware function that processes all incoming requests
+ * Main proxy function that processes all incoming requests
  * 
  * Rate limiting rules:
  * - POST /api/grade: 5 requests/minute (stricter for file uploads)
@@ -169,7 +169,7 @@ function isTestMode(request: NextRequest): boolean {
  * @param request - The incoming Next.js request
  * @returns NextResponse either continuing or blocking the request
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Check for test mode bypass (only in non-production environments)
   if (isTestMode(request)) {
     const response = NextResponse.next()
@@ -189,12 +189,12 @@ export function middleware(request: NextRequest) {
     if (!result.allowed) {
       // Return 429 Too Many Requests with rate limit info
       return NextResponse.json(
-        { 
-          error: 'Too many requests', 
+        {
+          error: 'Too many requests',
           message: 'Rate limit exceeded. Please try again later.',
           retryAfter: Math.ceil((result.resetTime - Date.now()) / 1000)
         },
-        { 
+        {
           status: 429,
           headers: {
             'Retry-After': String(Math.ceil((result.resetTime - Date.now()) / 1000)),
@@ -226,7 +226,7 @@ export function middleware(request: NextRequest) {
     
     if (!result.allowed) {
       return NextResponse.json(
-        { 
+        {
           error: 'Too many requests',
           retryAfter: Math.ceil((result.resetTime - Date.now()) / 1000)
         },
@@ -243,7 +243,7 @@ export function middleware(request: NextRequest) {
 // ============================================================================
 
 /**
- * Configure which routes the middleware applies to
+ * Configure which routes the proxy applies to
  * Only API routes are rate-limited; static assets and pages are not
  */
 export const config = {

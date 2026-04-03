@@ -53,7 +53,7 @@ Screenr is a modern web application designed to help HR professionals and hiring
 
 | Feature | Description |
 |---------|-------------|
-| **AI-Powered Grading** | Evaluates resumes using GLM-4-Plus AI model |
+| **AI-Powered Grading** | Evaluates resumes using the StepFun model through OpenRouter |
 | **Multi-Criteria Scoring** | Three evaluation dimensions with weighted overall score |
 | **Batch Processing** | Upload up to 10 resumes simultaneously |
 | **Smart Ranking** | Automatic ranking by overall score with visual badges |
@@ -126,7 +126,7 @@ Multi-layer PDF validation to detect fake/malicious files:
 
 ### Libraries
 - **PDF Processing**: pdfjs-dist for server-side text extraction
-- **AI Integration**: GLM-4-Plus via z-ai-web-dev-sdk
+- **AI Integration**: OpenRouter using `stepfun/step-3.5-flash:free`
 - **Toast Notifications**: Sonner
 - **Theme Management**: next-themes
 
@@ -142,7 +142,7 @@ Multi-layer PDF validation to detect fake/malicious files:
 ### Prerequisites
 
 - Node.js 18+
-- Bun (recommended) or npm
+- npm
 
 ### Installation
 
@@ -152,19 +152,26 @@ git clone https://github.com/screenr/screenr.git
 cd screenr
 
 # Install dependencies
-bun install
+npm install
+
+# Configure AI access
+# .env.local
+OPENROUTER_API_KEY=your_key_here
+OPENROUTER_MODEL=stepfun/step-3.5-flash:free
 
 # Run development server
-bun run dev
+npm run dev
 ```
 
 ### Available Scripts
 
 ```bash
-bun run dev      # Start development server
-bun run lint     # Run ESLint
-bun run test     # Run all test suites
-bun run build    # Build for production
+npm run dev       # Start development server
+npm run lint      # Run ESLint
+npm run test      # Run API + E2E suites
+npm run test:api  # Run all API shell suites
+npm run test:e2e  # Run all Cypress suites
+npm run build     # Build for production
 ```
 
 ---
@@ -207,7 +214,7 @@ screenr/
 ├── public/
 │   ├── favicon.svg                 # Custom Screenr favicon
 │   └── sitemap.xml                 # SEO sitemap
-└── middleware.ts                   # Rate limiting + test mode bypass
+└── proxy.ts                        # Rate limiting + test mode bypass
 ```
 
 ---
@@ -474,20 +481,23 @@ Screenr has a comprehensive test suite with **200+ tests** across **21 test suit
 ### Running Tests
 
 ```bash
+# Run all automated test suites
+npm test
+
 # Run all Cypress E2E tests
-bunx cypress run --headless
+npm run test:e2e
 
 # Run all API test suites
-./tests/api/run-all-suites.sh
+npm run test:api
 
 # Run specific API suite
-./tests/api/api-suite-10-security.sh
+bash tests/api/api-suite-10-security.sh
 
 # Run load tests (requires dev server running)
-./tests/load/load-test-runner.sh
+bash tests/load/load-test-runner.sh
 
 # Run optimized Cypress tests (with memory management)
-./tests/scripts/run-cypress-optimized.sh
+bash tests/scripts/run-cypress-optimized.sh
 ```
 
 ---
@@ -601,7 +611,7 @@ Complete reference of all error codes used in the application.
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes with tests
-4. Run the test suite (`bun run test`)
+4. Run the test suite (`npm test`)
 5. Commit with conventional commits
 6. Push and open a Pull Request
 

@@ -4,7 +4,8 @@
 # API Test Suite 1: Server Health Tests (Tests 1.1 - 1.5)
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -50,11 +51,11 @@ PASSED=$((PASSED + 1))
 
 # Test 1.4: Server process running
 echo -e "\n${CYAN}Test 1.4: Server process running${NC}"
-if pgrep -f "next-server" > /dev/null; then
-    echo -e "${GREEN}✓ PASS${NC} - Server process found"
+if server_is_reachable; then
+    echo -e "${GREEN}✓ PASS${NC} - Server reachable via health endpoint"
     PASSED=$((PASSED + 1))
 else
-    echo -e "${RED}✗ FAIL${NC} - No server process found"
+    echo -e "${RED}✗ FAIL${NC} - Server is not reachable"
     FAILED=$((FAILED + 1))
 fi
 

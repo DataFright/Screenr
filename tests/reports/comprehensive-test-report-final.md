@@ -134,81 +134,107 @@ Some Cypress tests experienced Electron renderer crashes due to memory constrain
 ## 5. Performance Metrics Summary
 
 | Metric | Value | Status |
-|--------|-------|--------|
-| Page Load Time | 35-63ms | ✅ Excellent |
-| API Response Time | 6-7ms | ✅ Excellent |
-| Grade API Time | 90-100ms | ✅ Excellent |
-| Memory Usage | ~1.6GB | ⚠️ Normal for Next.js |
-| Concurrent Users | 50+ | ✅ Excellent |
-| Batch Processing (10 PDFs) | 38ms | ✅ Excellent |
+# Screenr - Comprehensive Test Report
+**Generated:** 2026-04-03 17:48:32
+**Environment:** Next.js 16.2.2, Node.js v25.8.1, npm
 
 ---
 
-## 6. Security Validation
+## Executive Summary
 
-### Input Validation ✅
-- SQL Injection: Protected
-- XSS Attacks: Protected
-- Path Traversal: Protected
-- Null Byte Injection: Protected
+| Category | Status | Coverage |
+|----------|--------|----------|
+| Load Runner | ✅ PASSED | Current report generated |
+| API Suites | ✅ PASSED | 118/118 checks |
+| Cypress E2E | ✅ PASSED | 66/66 tests |
+| Lint | ✅ PASSED | ESLint clean |
 
-### File Validation ✅
-- Fake PDF Detection: Working (magic number validation)
-- Empty File Handling: Graceful
-- Non-PDF Rejection: Working
-- File Size Limits: Enforced
-
-### HTTP Security ✅
-- Method Validation: 405 for invalid methods
-- Security Headers: All present
-- Rate Limiting: Enforced
+**Overall Assessment:** The repository is currently test-passing on the active Windows/Git Bash environment after fixing cross-platform shell scripts and stabilizing the Cypress suite.
 
 ---
 
-## 7. Test Files Reference
+## 1. Current Results
 
-### Load Tests
-- `tests/load/load-test-runner.sh`
+### API Suites
 
-### API Test Suites
-- `tests/api/api-suite-01-health.sh`
-- `tests/api/api-suite-02-endpoints.sh`
-- `tests/api/api-suite-03-structure.sh`
-- `tests/api/api-suite-04-pdf.sh`
-- `tests/api/api-suite-05-response.sh`
-- `tests/api/api-suite-06-errors.sh`
-- `tests/api/api-suite-07-integration.sh`
-- `tests/api/api-suite-08-performance.sh`
-- `tests/api/api-suite-09-dark-mode.sh`
-- `tests/api/api-suite-10-security.sh`
-- `tests/api/api-suite-11-error-handling.sh`
+| Suite | Checks | Status |
+|-------|--------|--------|
+| 01 - Health | 5 | ✅ |
+| 02 - Endpoints | 6 | ✅ |
+| 03 - Structure | 9 | ✅ |
+| 04 - PDF Processing | 6 | ✅ |
+| 05 - Response Validation | 10 | ✅ |
+| 06 - Error Handling | 5 | ✅ |
+| 07 - Integration | 6 | ✅ |
+| 08 - Performance | 10 | ✅ |
+| 09 - Dark Mode | 8 | ✅ |
+| 10 - Security | 19 | ✅ |
+| 11 - Error Handling | 14 | ✅ |
+| 12 - Test Mode | 8 | ✅ |
+| 13 - PDF Validation | 12 | ✅ |
+| **Total** | **118** | **✅** |
 
-### E2E Tests
-- `cypress/e2e/suite-01-page-load.cy.ts`
-- `cypress/e2e/suite-02-form-validation.cy.ts`
-- `cypress/e2e/suite-03-file-upload.cy.ts`
-- `cypress/e2e/suite-04-accessibility.cy.ts`
-- `cypress/e2e/suite-05-responsive.cy.ts`
-- `cypress/e2e/suite-06-dark-mode.cy.ts`
-- `cypress/e2e/suite-07-error-handling.cy.ts`
-- `cypress/e2e/suite-08-fake-pdf.cy.ts`
+### Cypress Suites
 
----
-
-## 8. Recommendations
-
-### Production Deployment
-1. ✅ Application is ready for production deployment
-2. Consider Redis-based rate limiting for distributed servers
-3. Add APM integration for real-time monitoring
-
-### Performance Optimization
-1. Memory usage (1.6GB) is normal for Next.js with AI features
-2. Consider implementing queue-based processing for large batches
-3. Consider implementing chunked upload for files > 10MB
+| Suite | Tests | Status |
+|-------|-------|--------|
+| 01 - Page Load | 8 | ✅ |
+| 02 - Form Validation | 8 | ✅ |
+| 03 - File Upload | 8 | ✅ |
+| 04 - Accessibility | 8 | ✅ |
+| 05 - Responsive | 8 | ✅ |
+| 06 - Dark Mode | 10 | ✅ |
+| 07 - Error Handling | 8 | ✅ |
+| 08 - Fake PDF Detection | 8 | ✅ |
+| **Total** | **66** | **✅** |
 
 ---
 
-**Report Generated:** 2026-03-28 07:12:25
-**All Critical Tests:** ✅ PASSED
-**Application Status:** Production Ready
+## 2. Load Runner Snapshot
+
+Source: `tests/reports/load-test-report-20260403_174832.md`
+
+| Scenario | Result |
+|----------|--------|
+| 5 concurrent users | 100% success, 96ms avg |
+| 10 concurrent users | 100% success, 128ms avg |
+| 20 concurrent users | 100% success, 239ms avg |
+| 30 concurrent users | 100% success, 295ms avg |
+| 50 concurrent users | 100% success, 499ms avg |
+| 10-file batch | 72ms |
+| Memory stress | 20/20 successful |
+
+Additional observations:
+- Rate limiting triggered correctly without `X-Test-Mode`
+- Batch and file-size checks completed successfully
+- A new load report was generated during this run
+
+---
+
+## 3. What Changed To Reach Green
+
+- Shell test runners were made repo-relative and Windows-safe.
+- Hardcoded `/home/z/my-project` paths were removed from active test flows.
+- The API master runner no longer breaks on workspace paths with spaces.
+- The Cypress runner now executes every spec instead of stopping after the first one.
+- Upload-oriented E2E tests were rewritten around stable browser behavior.
+
+---
+
+## 4. Remaining Caveats
+
+- Cypress still warns that `allowCypressEnv` is enabled.
+- Cypress code coverage is not instrumented, so coverage warnings remain informational only.
+- The coverage report below is a maintained summary, not generated nyc instrumentation output.
+
+---
+
+## 5. Status
+
+**All critical automated checks pass.**
+
+- ✅ `npm run lint`
+- ✅ `npm run test:api`
+- ✅ `npm run test:e2e`
+- ✅ `npm test`
+- ✅ `bash tests/load/load-test-runner.sh`

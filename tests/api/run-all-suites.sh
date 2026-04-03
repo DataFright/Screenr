@@ -5,6 +5,7 @@
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -23,12 +24,16 @@ echo "=============================================="
 
 # Run each suite in order
 for suite in 01 02 03 04 05 06 07 08 09 10 11 12 13; do
-    SUITE_FILE="$SCRIPT_DIR/api-suite-${suite}-*.sh"
-    
-    # Find matching file
-    MATCHING_FILE=$(ls $SUITE_FILE 2>/dev/null | head -1)
-    
-    if [ -f "$MATCHING_FILE" ]; then
+    MATCHING_FILE=""
+
+    for candidate in "$SCRIPT_DIR"/api-suite-"${suite}"-*.sh; do
+        if [ -f "$candidate" ]; then
+            MATCHING_FILE="$candidate"
+            break
+        fi
+    done
+
+    if [ -n "$MATCHING_FILE" ]; then
         echo -e "\n${CYAN}========================================${NC}"
         echo -e "${CYAN}Running: $(basename "$MATCHING_FILE")${NC}"
         echo -e "${CYAN}========================================${NC}"
@@ -42,7 +47,7 @@ for suite in 01 02 03 04 05 06 07 08 09 10 11 12 13; do
             TOTAL_FAILED=$((TOTAL_FAILED + 1))
         fi
     else
-        echo -e "${YELLOW}Suite file not found: $SUITE_FILE${NC}"
+        echo -e "${YELLOW}Suite file not found for prefix api-suite-${suite}-${NC}"
     fi
 done
 

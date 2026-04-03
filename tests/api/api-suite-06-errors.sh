@@ -4,9 +4,11 @@
 # API Test Suite 6: Error Handling Tests (Tests 6.1 - 6.5)
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
-TEST_DIR="/home/z/my-project/tests/fixtures"
-RESUME_DIR="/home/z/my-project/cypress/fixtures/test-data/resumes"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
+
+TEST_DIR="$TEST_FIXTURES_DIR"
+RESUME_DIR="$CYPRESS_RESUME_DIR"
 
 # Colors
 RED='\033[0;31m'

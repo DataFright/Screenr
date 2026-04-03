@@ -5,17 +5,16 @@
 # Includes X-Test-Mode header to bypass rate limiting during tests
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
-TEST_DIR="/home/z/my-project/tests/fixtures"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
+
+TEST_DIR="$TEST_FIXTURES_DIR"
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'
-
-# Test mode header to bypass rate limiting
-TEST_MODE_HEADER="-H 'X-Test-Mode: true'"
 
 echo "=============================================="
 echo "   Suite 4: PDF Processing Tests"
@@ -161,7 +160,7 @@ fi
 
 # Test 4.6: Real resume file processed
 echo -e "\n${CYAN}Test 4.6: Real resume file processed${NC}"
-REAL_RESUME="/home/z/my-project/cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf"
+REAL_RESUME="$CYPRESS_RESUME_DIR/01_senior_dev_excellent.pdf"
 if [ -f "$REAL_RESUME" ]; then
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/grade" \
         -H "X-Test-Mode: true" \

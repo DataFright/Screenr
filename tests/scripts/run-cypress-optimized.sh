@@ -8,6 +8,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$SCRIPT_DIR/test-env.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -45,19 +46,18 @@ clear_cypress_cache() {
 # Function to run a single test spec with isolation
 run_spec() {
     local spec_file=$1
-    local spec_name=$(basename "$spec_file")
+    local spec_name
+    spec_name=$(basename "$spec_file")
     
     echo -e "${CYAN}Running: $spec_name${NC}"
     
     # Run with reduced memory footprint
-    # --exit: Force exit after test
     NODE_OPTIONS="--max-old-space-size=2048" \
-    timeout 90 \
-    bunx cypress run \
+    npx cypress run \
         --headless \
         --spec "$spec_file" \
         --quiet \
-        2>&1
+        2>&1 < /dev/null
     
     local exit_code=$?
     
@@ -74,10 +74,10 @@ main() {
     
     # Step 2: Verify server is running
     echo -e "${CYAN}[2/3] Checking server...${NC}"
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000" | grep -q "200"; then
+    if server_is_reachable; then
         echo -e "${GREEN}✓ Server is running${NC}"
     else
-        echo -e "${RED}✗ Server not running. Start with 'bun run dev'${NC}"
+        echo -e "${RED}✗ Server not running. Start with 'npm run dev'${NC}"
         exit 1
     fi
     echo ""
@@ -91,9 +91,10 @@ main() {
     FAILED_SPECS=()
     
     # Get all spec files
-    SPEC_FILES=$(ls "$PROJECT_ROOT"/cypress/e2e/suite-*.cy.ts 2>/dev/null)
-    
-    for spec in $SPEC_FILES; do
+    local specs=()
+    mapfile -t specs < <(find "$PROJECT_ROOT/cypress/e2e" -maxdepth 1 -name 'suite-*.cy.ts' | sort)
+
+    for spec in "${specs[@]}"; do
         if [ -f "$spec" ]; then
             spec_name=$(basename "$spec")
             

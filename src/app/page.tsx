@@ -160,27 +160,19 @@ export default function ResumeGrader() {
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<GradedResume[]>([])
   const [error, setError] = useState<ApiError | null>(null)
+  const [isDragActive, setIsDragActive] = useState(false)
 
-  /**
-   * Handles file selection from the file input
-   * Validates file count, type, and size before adding to state
-   * 
-   * @param e - Change event from file input element
-   */
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const processSelectedFiles = useCallback((selectedFiles: File[]) => {
     setError(null)
-    const selectedFiles = Array.from(e.target.files || [])
-    
-    // Validate file count
+
     if (files.length + selectedFiles.length > MAX_FILES) {
       toast.error(`Maximum ${MAX_FILES} files allowed`)
       return
     }
-    
-    // Filter and validate PDF files
+
     const validFiles: File[] = []
     const errors: string[] = []
-    
+
     for (const file of selectedFiles) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         errors.push(`${file.name}: Not a PDF file`)
@@ -196,18 +188,59 @@ export default function ResumeGrader() {
       }
       validFiles.push(file)
     }
-    
+
     if (errors.length > 0) {
-      toast.error(errors[0]) // Show first error
+      toast.error(errors[0])
     }
-    
+
     if (validFiles.length > 0) {
       setFiles(prev => [...prev, ...validFiles])
-      if (validFiles.length > 0) {
-        toast.success(`Added ${validFiles.length} file(s)`)
-      }
+      toast.success(`Added ${validFiles.length} file(s)`)
     }
   }, [files.length])
+
+  /**
+   * Handles file selection from the file input
+   * Validates file count, type, and size before adding to state
+   * 
+   * @param e - Change event from file input element
+   */
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    processSelectedFiles(Array.from(e.target.files || []))
+    e.target.value = ''
+  }, [processSelectedFiles])
+
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragActive(true)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isDragActive) {
+      setIsDragActive(true)
+    }
+  }, [isDragActive])
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      return
+    }
+
+    setIsDragActive(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragActive(false)
+    processSelectedFiles(Array.from(e.dataTransfer.files || []))
+  }, [processSelectedFiles])
 
   /**
    * Removes a file from the uploaded files list
@@ -511,7 +544,14 @@ export default function ResumeGrader() {
                 </div>
                 
                 {/* Upload Drop Zone */}
-                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-6 text-center hover:border-emerald-500 dark:hover:border-emerald-600 transition-colors bg-slate-50/50 dark:bg-slate-900/50">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-slate-50/50 dark:bg-slate-900/50 ${isDragActive ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/20' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-600'}`}
+                  data-testid="resume-dropzone"
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <input
                     type="file"
                     accept=".pdf"
@@ -526,8 +566,8 @@ export default function ResumeGrader() {
                     className="cursor-pointer flex flex-col items-center gap-2"
                   >
                     <FileText className="h-12 w-12 text-slate-400 dark:text-slate-500" />
-                    <span className="text-sm text-muted-foreground">
-                      Click to upload or drag and drop
+                    <span className="text-sm text-muted-foreground" data-testid="resume-dropzone-label">
+                      {isDragActive ? 'Drop PDF files here' : 'Click to upload or drag and drop'}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       PDF files only (max 10MB each)

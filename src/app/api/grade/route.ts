@@ -21,12 +21,11 @@
  * 
  * @module api/grade
  * @requires next/server - NextRequest, NextResponse
- * @requires z-ai-web-dev-sdk - AI completion API
+ * @requires OpenRouter chat completions API
  * @requires pdfjs-dist - PDF text extraction
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
 import {
   APIError,
   ErrorCode,
@@ -74,6 +73,15 @@ const MAX_JOB_DESCRIPTION_LENGTH = 2000
 /** PDF magic number (first 4 bytes: %PDF) for file validation */
 const PDF_MAGIC_NUMBER = Buffer.from([0x25, 0x50, 0x44, 0x46])
 
+/** OpenRouter chat completions endpoint */
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+
+/** Default OpenRouter model for resume grading */
+const DEFAULT_OPENROUTER_MODEL = 'stepfun/step-3.5-flash:free'
+
+/** Optional app identifier sent to OpenRouter */
+const OPENROUTER_APP_NAME = 'Screenr'
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -111,6 +119,16 @@ interface ApiResponse {
     message: string
     details?: Record<string, unknown>
   }
+}
+
+interface OpenRouterResponseMessage {
+  content?: string | Array<{ type?: string; text?: string }>
+}
+
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: OpenRouterResponseMessage
+  }>
 }
 
 // ============================================================================
@@ -215,6 +233,35 @@ function clampScore(score: unknown): number {
   return Math.min(SCORE_MAX, Math.max(SCORE_MIN, Number(score) || 0))
 }
 
+function getOpenRouterApiKey(): string {
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.STEP_KEY || process.env.StepKey
+
+  if (!apiKey) {
+    throw new Error('Missing OpenRouter API key. Set OPENROUTER_API_KEY or STEP_KEY in your environment.')
+  }
+
+  return apiKey
+}
+
+function getOpenRouterModel(): string {
+  return process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL
+}
+
+function extractOpenRouterTextContent(message?: OpenRouterResponseMessage): string {
+  if (!message?.content) {
+    return ''
+  }
+
+  if (typeof message.content === 'string') {
+    return message.content
+  }
+
+  return message.content
+    .filter((part) => part.type === 'text' && typeof part.text === 'string')
+    .map((part) => part.text)
+    .join('')
+}
+
 /**
  * Validates email format using regex
  * 
@@ -283,7 +330,7 @@ function createErrorResumeResult(fileName: string, candidateName: string, explan
  * @throws ProcessingError if PDF parsing fails
  */
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  let pdf: Awaited<ReturnType<typeof import('pdfjs-dist/legacy/build/pdf.mjs').getDocument>>['promise'] | null = null
+  let pdf: Awaited<ReturnType<typeof import('pdfjs-dist/legacy/build/pdf.mjs').getDocument>['promise']> | null = null
   
   try {
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
@@ -370,8 +417,6 @@ async function gradeResume(
   jobDescription: string,
   fileName: string
 ): Promise<GradedResume> {
-  const zai = await ZAI.create()
-
   // Sanitize inputs for AI prompt
   const safeJobTitle = sanitizeString(jobTitle, MAX_JOB_TITLE_LENGTH)
   const safeJobDescription = sanitizeString(jobDescription, MAX_JOB_DESCRIPTION_LENGTH)
@@ -426,15 +471,30 @@ Grade the candidate from 0-100 in:
 Return ONLY valid JSON with no additional text or markdown.`
 
   try {
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: 'assistant', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      thinking: { type: 'disabled' }
+    const completionResponse = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getOpenRouterApiKey()}`,
+        'Content-Type': 'application/json',
+        'X-Title': OPENROUTER_APP_NAME,
+      },
+      body: JSON.stringify({
+        model: getOpenRouterModel(),
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        reasoning: { enabled: true }
+      })
     })
 
-    const responseText = completion.choices[0]?.message?.content || ''
+    if (!completionResponse.ok) {
+      const errorBody = await completionResponse.text()
+      throw new Error(`OpenRouter request failed with status ${completionResponse.status}: ${errorBody}`)
+    }
+
+    const completion = await completionResponse.json() as OpenRouterResponse
+    const responseText = extractOpenRouterTextContent(completion.choices?.[0]?.message)
     
     // Clean up the response (remove markdown code blocks if present)
     let cleanedResponse = responseText.trim()

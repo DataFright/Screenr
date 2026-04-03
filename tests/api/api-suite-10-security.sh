@@ -4,7 +4,8 @@
 # Security Test Suite - Comprehensive security vulnerability tests
 # ============================================================================
 
-BASE_URL="http://localhost:3000"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/test-env.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -32,7 +33,7 @@ RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -H "X-Test-Mode: true" \
   -F "jobTitle=Engineer'; DROP TABLE users; --" \
   -F "jobDescription=Test job" \
-  -F "files=@/home/z/my-project/tests/fixtures/test_resume.pdf" \
+    -F "files=@$TEST_FIXTURES_DIR/test_resume.pdf" \
   --max-time 10)
 if echo "$RESPONSE" | grep -q '"success":false\|"success":true\|"results"'; then
     echo -e "${GREEN}✓ PASS${NC} - SQL injection attempt handled safely"
@@ -64,11 +65,33 @@ fi
 
 # Test S.3: Path Traversal in Filename
 echo -e "\n${CYAN}Test S.3: Path Traversal Protection${NC}"
-RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
-  -F "jobTitle=Engineer" \
-  -F "jobDescription=Test job" \
-  -F "files=@/home/z/my-project/tests/fixtures/valid_resume.pdf;filename=../../../etc/passwd" \
-  --max-time 10)
+RESPONSE=$(cd "$PROJECT_ROOT" && node <<'EOF'
+const fs = require('fs')
+const path = require('path')
+
+async function main() {
+    const filePath = path.join(process.cwd(), 'tests', 'fixtures', 'valid_resume.pdf')
+    const form = new FormData()
+    const blob = new Blob([fs.readFileSync(filePath)], { type: 'application/pdf' })
+
+    form.append('jobTitle', 'Engineer')
+    form.append('jobDescription', 'Test job')
+    form.append('files', blob, '../../../etc/passwd')
+
+    const response = await fetch('http://localhost:3000/api/grade', {
+        method: 'POST',
+        body: form,
+    })
+
+    process.stdout.write(await response.text())
+}
+
+main().catch((error) => {
+    process.stderr.write(String(error))
+    process.exit(1)
+})
+EOF
+)
 if echo "$RESPONSE" | grep -q 'Invalid\|error\|success'; then
     echo -e "${GREEN}✓ PASS${NC} - Path traversal blocked or sanitized"
     PASSED=$((PASSED + 1))
@@ -99,14 +122,15 @@ echo -e "\n${CYAN}=== File Validation Tests ===${NC}"
 
 # Test S.5: Fake PDF (Magic Number Validation)
 echo -e "\n${CYAN}Test S.5: Fake PDF Detection (Magic Number)${NC}"
-echo "Not a real PDF file content here" > /tmp/fake.pdf
+FAKE_PDF="$TMP_DIR/fake-security.pdf"
+echo "Not a real PDF file content here" > "$FAKE_PDF"
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -H "X-Test-Mode: true" \
   -F "jobTitle=Engineer" \
   -F "jobDescription=Test job description" \
-  -F "files=@/tmp/fake.pdf" \
+    -F "files=@$FAKE_PDF" \
   --max-time 10)
-rm /tmp/fake.pdf
+rm -f "$FAKE_PDF"
 if echo "$RESPONSE" | grep -qi 'Invalid PDF\|not a valid PDF\|invalid\|error.*pdf\|fake\|corrupt\|magic'; then
     echo -e "${GREEN}✓ PASS${NC} - Fake PDF rejected (magic number validation)"
     PASSED=$((PASSED + 1))
@@ -123,13 +147,14 @@ fi
 
 # Test S.6: Empty File
 echo -e "\n${CYAN}Test S.6: Empty File Handling${NC}"
-touch /tmp/empty.pdf
+EMPTY_PDF="$TMP_DIR/empty-security.pdf"
+: > "$EMPTY_PDF"
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -F "jobTitle=Engineer" \
   -F "jobDescription=Test job description" \
-  -F "files=@/tmp/empty.pdf" \
+    -F "files=@$EMPTY_PDF" \
   --max-time 10)
-rm /tmp/empty.pdf
+rm -f "$EMPTY_PDF"
 if echo "$RESPONSE" | grep -q 'too small\|No Text\|Invalid\|success.*false'; then
     echo -e "${GREEN}✓ PASS${NC} - Empty file rejected"
     PASSED=$((PASSED + 1))
@@ -140,13 +165,14 @@ fi
 
 # Test S.7: Non-PDF File Type
 echo -e "\n${CYAN}Test S.7: Non-PDF File Rejection${NC}"
-echo "Plain text content" > /tmp/document.txt
+TEXT_FILE="$TMP_DIR/document-security.txt"
+echo "Plain text content" > "$TEXT_FILE"
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/grade" \
   -F "jobTitle=Engineer" \
   -F "jobDescription=Test" \
-  -F "files=@/tmp/document.txt" \
+    -F "files=@$TEXT_FILE" \
   --max-time 10)
-rm /tmp/document.txt
+rm -f "$TEXT_FILE"
 if echo "$RESPONSE" | grep -q 'Invalid\|error\|not.*PDF\|success.*false'; then
     echo -e "${GREEN}✓ PASS${NC} - Non-PDF file rejected"
     PASSED=$((PASSED + 1))
@@ -258,7 +284,11 @@ echo -e "\n${CYAN}=== Rate Limiting Tests ===${NC}"
 
 # Test S.16: Rate Limiting Headers Present
 echo -e "\n${CYAN}Test S.16: Rate Limiting Headers${NC}"
-HEADERS=$(curl -s -I -X POST "$BASE_URL/api/grade" -F "jobTitle=Test" -F "jobDescription=Test")
+HEADERS=$(curl -s -D - -o /dev/null -X POST "$BASE_URL/api/grade" \
+    -F "jobTitle=Test" \
+    -F "jobDescription=Test description here" \
+    -F "files=@$TEST_FIXTURES_DIR/test_resume.pdf" \
+    --max-time 20)
 if echo "$HEADERS" | grep -qi "X-RateLimit\|429\|retry"; then
     echo -e "${GREEN}✓ PASS${NC} - Rate limiting mechanism active"
     PASSED=$((PASSED + 1))
