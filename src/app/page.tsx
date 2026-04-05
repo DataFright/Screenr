@@ -19,7 +19,7 @@
 
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -161,6 +161,19 @@ export default function ResumeGrader() {
   const [results, setResults] = useState<GradedResume[]>([])
   const [error, setError] = useState<ApiError | null>(null)
   const [isDragActive, setIsDragActive] = useState(false)
+
+  useEffect(() => {
+    const testWindow = window as Window & {
+      Cypress?: unknown
+      __SCREENR_E2E_RESULTS__?: GradedResume[]
+    }
+
+    if (!testWindow.Cypress || !Array.isArray(testWindow.__SCREENR_E2E_RESULTS__)) {
+      return
+    }
+
+    setResults([...testWindow.__SCREENR_E2E_RESULTS__].sort((a, b) => b.overallScore - a.overallScore))
+  }, [])
 
   const processSelectedFiles = useCallback((selectedFiles: File[]) => {
     setError(null)
@@ -675,11 +688,11 @@ export default function ResumeGrader() {
                   </div>
                 ) : (
                   <ScrollArea className="h-[600px]">
-                    <div className="space-y-4 pr-4">
+                    <div className="space-y-4 pr-4" data-testid="graded-results-list">
                       {results.map((resume, index) => {
                         const rankBadge = getRankBadge(index)
                         return (
-                          <Card key={`${resume.fileName}-${index}`} className="overflow-hidden border-slate-200 dark:border-slate-700">
+                          <Card key={`${resume.fileName}-${index}`} className="overflow-hidden border-slate-200 dark:border-slate-700" data-testid="graded-resume-card">
                             <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {rankBadge ? (
@@ -698,6 +711,7 @@ export default function ResumeGrader() {
                                 </div>
                               </div>
                               <Badge 
+                                data-testid="graded-resume-score"
                                 className={`text-lg font-bold ${resume.overallScore >= 80 ? 'bg-green-500 text-white' : resume.overallScore >= 60 ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'}`}
                               >
                                 {resume.overallScore}

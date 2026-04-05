@@ -1,0 +1,567 @@
+==============================================
+   SCREENR - API TEST SUITES
+   2026-04-04 18:12:52
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-01-health.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 1: Server Health Tests
+==============================================
+
+[0;36mTest 1.1: Health endpoint responding[0m
+[0;32m✓ PASS[0m - HTTP 200
+
+[0;36mTest 1.2: Main page accessible[0m
+[0;32m✓ PASS[0m - HTTP 200
+
+[0;36mTest 1.3: Response time acceptable[0m
+   Response time: 0.049665s
+[0;32m✓ PASS[0m - Response time: 0.049665s
+
+[0;36mTest 1.4: Server process running[0m
+[0;32m✓ PASS[0m - Server reachable via health endpoint
+
+[0;36mTest 1.5: Health response contains OK status[0m
+[0;32m✓ PASS[0m - Status OK found
+
+==============================================
+   Suite 1 Summary: 5 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-02-endpoints.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 2: Endpoint Validation Tests
+==============================================
+
+[0;36mTest 2.1: Grade API rejects empty request[0m
+[0;32m✓ PASS[0m - HTTP 400 (correctly rejected)
+
+[0;36mTest 2.2: Grade API validates job title[0m
+[0;32m✓ PASS[0m - HTTP 400 (missing job title rejected)
+
+[0;36mTest 2.3: Grade API validates job description[0m
+[0;32m✓ PASS[0m - HTTP 400 (missing job description rejected)
+
+[0;36mTest 2.4: Grade API validates files required[0m
+[0;32m✓ PASS[0m - HTTP 400 (no files rejected)
+
+[0;36mTest 2.5: Grade API rejects GET requests[0m
+[0;32m✓ PASS[0m - HTTP 405 (GET rejected)
+
+[0;36mTest 2.6: Grade API rejects invalid JSON[0m
+[0;32m✓ PASS[0m - HTTP 400 (invalid JSON rejected)
+
+==============================================
+   Suite 2 Summary: 6 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-03-structure.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 3: Page Structure Tests
+==============================================
+
+[0;36mTest 3.1: Page contains 'Screenr' title[0m
+[0;32m✓ PASS[0m - Title found
+
+[0;36mTest 3.2: Page contains 'Job Details' section[0m
+[0;32m✓ PASS[0m - Section found
+
+[0;36mTest 3.3: Page contains 'Upload Resumes' section[0m
+[0;32m✓ PASS[0m - Section found
+
+[0;36mTest 3.4: Page contains 'Grading Results' section[0m
+[0;32m✓ PASS[0m - Section found
+
+[0;36mTest 3.5: Page has file input element[0m
+[0;32m✓ PASS[0m - File input found
+
+[0;36mTest 3.6: File input has PDF filter[0m
+[0;32m✓ PASS[0m - PDF filter found
+
+[0;36mTest 3.7: Page has textarea for job description[0m
+[0;32m✓ PASS[0m - Textarea found
+
+[0;36mTest 3.8: Page has 'Grade Resumes' button[0m
+[0;32m✓ PASS[0m - Button found
+
+[0;36mTest 3.9: Page has 'Clear All' button[0m
+[0;32m✓ PASS[0m - Button found
+
+==============================================
+   Suite 3 Summary: 9 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-04-pdf.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 4: PDF Processing Tests
+==============================================
+
+[0;36mTest 4.1: Valid PDF processed successfully[0m
+[0;32m✓ PASS[0m - Score: 0
+
+[0;36mTest 4.2: Corrupt PDF handled gracefully[0m
+[0;32m✓ PASS[0m - Fake PDF properly rejected with error
+
+[0;36mTest 4.3: Empty PDF handled gracefully[0m
+[0;32m✓ PASS[0m - HTTP 200 (handled)
+
+[0;36mTest 4.4: Non-PDF file skipped[0m
+[0;32m✓ PASS[0m - HTTP 200 (non-PDF handled)
+
+[0;36mTest 4.5: Multiple PDFs processed[0m
+[0;32m✓ PASS[0m - 2 results returned
+
+[0;36mTest 4.6: Real resume file processed[0m
+[0;32m✓ PASS[0m - Real resume scored: 96
+
+==============================================
+   Suite 4 Summary: 6 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-05-response.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 5: Response Validation Tests
+==============================================
+
+[0;36mTest 5.1: Response contains fileName field[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.2: Response contains candidateName field[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.3: Response contains email field[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.4: Response contains phone field[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.5: Response contains overallScore field[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.6: Response contains professionalism score[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.7: Response contains qualifications score[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.8: Response contains workExperience score[0m
+[0;32m✓ PASS[0m - Field found
+
+[0;36mTest 5.9: Overall score is in valid range (0-100)[0m
+[0;32m✓ PASS[0m - Score: 96 (valid range)
+
+[0;36mTest 5.10: Response has score breakdown explanations[0m
+[0;32m✓ PASS[0m - Explanations found
+
+==============================================
+   Suite 5 Summary: 10 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-06-errors.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 6: Error Handling Tests
+==============================================
+
+[0;36mTest 6.1: Special characters in job title accepted[0m
+[0;32m✓ PASS[0m - HTTP 200 (special chars accepted)
+
+[0;36mTest 6.2: Long job description handled[0m
+[0;32m✓ PASS[0m - HTTP 200
+
+[0;36mTest 6.3: Unicode characters handled[0m
+[0;32m✓ PASS[0m - HTTP 200
+
+[0;36mTest 6.4: Empty job title rejected[0m
+[0;32m✓ PASS[0m - HTTP 400 (correctly rejected)
+
+[0;36mTest 6.5: Empty job description rejected[0m
+[0;32m✓ PASS[0m - HTTP 400 (correctly rejected)
+
+==============================================
+   Suite 6 Summary: 5 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-07-integration.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 7: Integration Tests
+==============================================
+
+[0;36mTest 7.1: Senior developer resume grades successfully[0m
+[0;32m✓ PASS[0m - Resume processed successfully
+
+[0;36mTest 7.2: Multiple resumes graded successfully[0m
+[0;32m✓ PASS[0m - 2 resumes processed
+
+[0;36mTest 7.3: Entry-level resume grades correctly[0m
+[0;32m✓ PASS[0m - Entry level resume processed
+
+[0;36mTest 7.4: Poor quality resume handled[0m
+[0;32m✓ PASS[0m - Poor resume handled - HTTP 200
+
+[0;36mTest 7.5: Unrelated resume - chef for tech job[0m
+[0;32m✓ PASS[0m - Chef resume handled - HTTP 200
+
+[0;36mTest 7.6: Overqualified candidate handled[0m
+[0;32m✓ PASS[0m - Overqualified handled - HTTP 200
+
+==============================================
+   Suite 7 Summary: 6 passed, 0 failed, 0 skipped
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-08-performance.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite P: Performance & Load Tests
+==============================================
+
+[0;36mTest P.1: Page load time benchmark[0m
+   Page load time: 0.045178s
+[0;32m✓ PASS[0m - Load time under 1s
+
+[0;36mTest P.2: API response time benchmark[0m
+   API response time: 0.008428s
+[0;32m✓ PASS[0m - API response under 500ms
+
+[0;36mTest P.3: Grade API response time (with AI)[0m
+   Grade API time: 22.55s
+[0;32m✓ PASS[0m - Grade API response under 60s
+
+[0;36mTest P.4: Concurrent requests handling (5 simultaneous)[0m
+   Sending 5 concurrent requests...
+   Total time for 5 concurrent requests: 43ms
+[0;32m✓ PASS[0m - Concurrent requests handled efficiently
+
+[0;36mTest P.5: Memory usage check[0m
+   Memory usage: 0MB
+[0;32m✓ PASS[0m - Memory usage under 1GB
+
+[0;36mTest P.6: Large payload handling (3 resumes)[0m
+   Response time: 35815ms, HTTP: 200
+[0;32m✓ PASS[0m - Large payload handled successfully
+
+[0;36mTest P.7: Response size check[0m
+   Response size: 0KB
+[0;32m✓ PASS[0m - Response size reasonable
+
+[0;36mTest P.8: Connection reuse test (10 sequential requests)[0m
+   Average request time: 0.009s
+[0;32m✓ PASS[0m - Connection reuse efficient
+
+[0;36mTest P.9: Timeout handling test[0m
+[0;32m✓ PASS[0m - Timeout handled gracefully
+
+[0;36mTest P.10: Error response time test[0m
+   Error response time: 15ms, HTTP: 400
+[0;32m✓ PASS[0m - Error response fast
+
+[0;36mTest P.11: Full batch grading with 10 resumes at ~1MB each[0m
+   HTTP: 200, UI/API wall time: 199412ms, server timing: 199209.0ms, results: 10
+[0;32m✓ PASS[0m - 10 x ~1MB batch completed successfully
+
+==============================================
+   Suite P Summary
+==============================================
+   Passed:   11
+   Failed:   0
+   Warnings: 0
+==============================================
+
+   Performance Metrics:
+   -------------------
+   Page Load:      0.045178s
+   API Response:   0.008428s
+   Grade API:      22.55s
+   Memory Usage:   0MB
+
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-09-dark-mode.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 9: Dark Mode Feature Tests
+==============================================
+
+[0;36mTest 9.1: Theme toggle button exists in HTML[0m
+[0;32m✓ PASS[0m - Theme toggle button with sun icon found
+
+[0;36mTest 9.2: ThemeProvider component configured[0m
+[0;32m✓ PASS[0m - Theme hydration suppression found
+
+[0;36mTest 9.3: Light mode is default (no dark class)[0m
+[0;32m✓ PASS[0m - No dark class in initial HTML (light mode default)
+
+[0;36mTest 9.4: Sun icon present indicating light mode[0m
+[0;32m✓ PASS[0m - Sun icon found (light mode active)
+
+[0;36mTest 9.5: Dark mode CSS classes available[0m
+[0;32m✓ PASS[0m - Dark mode CSS classes found
+
+[0;36mTest 9.6: Theme provider defaultTheme set to light[0m
+[0;32m✓ PASS[0m - defaultTheme is set to light
+
+[0;36mTest 9.7: Theme toggle in header area[0m
+[0;32m✓ PASS[0m - Theme toggle positioned in header
+
+[0;36mTest 9.8: Dark mode background styles available[0m
+[0;32m✓ PASS[0m - Background gradient classes found
+
+==============================================
+   Suite 9 Summary: 8 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-10-security.sh[0m
+[0;36m========================================[0m
+==============================================
+   Security Test Suite (Comprehensive)
+==============================================
+
+[0;36m=== Input Validation Tests ===[0m
+
+[0;36mTest S.1: SQL Injection Protection (Job Title)[0m
+[0;32m✓ PASS[0m - SQL injection attempt handled safely
+
+[0;36mTest S.2: XSS Protection (Job Title)[0m
+[0;32m✓ PASS[0m - Request handled safely
+
+[0;36mTest S.3: Path Traversal Protection[0m
+[0;31m✗ FAIL[0m - Path traversal not handled
+
+[0;36mTest S.4: Null Byte Injection Protection[0m
+[0;32m✓ PASS[0m - Null byte handled safely
+
+[0;36m=== File Validation Tests ===[0m
+
+[0;36mTest S.5: Fake PDF Detection (Magic Number)[0m
+[0;32m✓ PASS[0m - Fake PDF rejected (magic number validation)
+
+[0;36mTest S.6: Empty File Handling[0m
+[0;32m✓ PASS[0m - Empty file rejected
+
+[0;36mTest S.7: Non-PDF File Rejection[0m
+[0;32m✓ PASS[0m - Non-PDF file rejected
+
+[0;36m=== HTTP Security Tests ===[0m
+
+[0;36mTest S.8: GET Method Not Allowed[0m
+[0;32m✓ PASS[0m - GET rejected with 405 and error code
+
+[0;36mTest S.9: PUT Method Not Allowed[0m
+[0;32m✓ PASS[0m - PUT rejected with 405
+
+[0;36mTest S.10: DELETE Method Not Allowed[0m
+[0;32m✓ PASS[0m - DELETE rejected with 405
+
+[0;36m=== Security Headers Tests ===[0m
+
+[0;36mTest S.11: X-Frame-Options Header[0m
+[0;32m✓ PASS[0m - X-Frame-Options skipped (sandbox preview compatibility)
+
+[0;36mTest S.12: X-Content-Type-Options Header[0m
+[0;32m✓ PASS[0m - X-Content-Type-Options: nosniff present
+
+[0;36mTest S.13: X-XSS-Protection Header[0m
+[0;32m✓ PASS[0m - X-XSS-Protection header present
+
+[0;36mTest S.14: Content-Security-Policy Header[0m
+[0;32m✓ PASS[0m - Content-Security-Policy header present
+
+[0;36mTest S.15: Referrer-Policy Header[0m
+[0;32m✓ PASS[0m - Referrer-Policy header present
+
+[0;36m=== Rate Limiting Tests ===[0m
+
+[0;36mTest S.16: Rate Limiting Headers[0m
+[0;32m✓ PASS[0m - Rate limiting mechanism active
+
+[0;36m=== Error Handling Security Tests ===[0m
+
+[0;36mTest S.17: No Stack Trace Leakage[0m
+[0;32m✓ PASS[0m - No stack trace in error response
+
+[0;36mTest S.18: No Internal Path Disclosure[0m
+[0;32m✓ PASS[0m - No internal paths in error response
+
+[0;36mTest S.19: Generic Error Messages[0m
+[0;32m✓ PASS[0m - User-friendly error message present
+
+==============================================
+   Security Test Summary
+   Passed: 18
+   Failed: 1
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-11-error-handling.sh[0m
+[0;36m========================================[0m
+==============================================
+   Error Handling Test Suite
+==============================================
+
+[0;36mTest E.1: Missing Job Title[0m
+[0;32m✓ PASS[0m - Missing job title returns proper error
+
+[0;36mTest E.2: Missing Job Description[0m
+[0;32m✓ PASS[0m - Missing job description returns proper error
+
+[0;36mTest E.3: Job Title Too Short[0m
+[0;32m✓ PASS[0m - Short job title returns error
+
+[0;36mTest E.4: Job Description Too Short[0m
+[0;32m✓ PASS[0m - Short job description returns error
+
+[0;36mTest E.5: No Files Uploaded[0m
+[0;32m✓ PASS[0m - Missing files returns proper error
+
+[0;36mTest E.6: Invalid File Type[0m
+[0;32m✓ PASS[0m - Non-PDF file rejected
+
+[0;36mTest E.7: Empty PDF File[0m
+[0;32m✓ PASS[0m - Empty file handled gracefully
+
+[0;36mTest E.8: Corrupted PDF (Not a real PDF)[0m
+[0;32m✓ PASS[0m - Fake PDF rejected with magic number validation
+
+[0;36mTest E.9: HTTP Method Not Allowed (GET)[0m
+[0;32m✓ PASS[0m - GET method rejected with 405 and error code
+
+[0;36mTest E.10: HTTP Method Not Allowed (PUT)[0m
+[0;32m✓ PASS[0m - PUT method rejected with 405
+
+[0;36mTest E.11: HTTP Method Not Allowed (DELETE)[0m
+[0;32m✓ PASS[0m - DELETE method rejected with 405
+
+[0;36mTest E.12: Error Response Structure[0m
+[0;32m✓ PASS[0m - Error response has proper structure
+
+[0;36mTest E.13: Success Response Structure[0m
+[0;32m✓ PASS[0m - Success response has proper structure (success, results)
+
+[0;36mTest E.14: Malformed Request (Invalid Content-Type)[0m
+[0;32m✓ PASS[0m - Request handled with HTTP 429
+
+==============================================
+   Error Handling Test Summary: 14 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-12-test-mode.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 12: Test Mode Bypass Tests
+==============================================
+
+[0;36mTest 12.1: Test mode header bypasses rate limiting[0m
+Sending 10 rapid requests with test mode header...
+[0;32m✓ PASS[0m - 10/10 requests succeeded (test mode working)
+
+[0;36mTest 12.2: Test mode returns bypass confirmation header[0m
+[0;32m✓ PASS[0m - Test mode header returned in response
+
+[0;36mTest 12.3: Rate limiting still enforced without test mode[0m
+Sending rapid requests without test mode header...
+[0;32m✓ PASS[0m - Rate limiting enforced (429 received)
+
+[0;36mTest 12.4: Test mode header accepted on health endpoint[0m
+[0;32m✓ PASS[0m - Health endpoint accessible with test mode
+
+[0;36mTest 12.5: Test mode allows concurrent requests[0m
+Sending 5 concurrent requests with test mode...
+[0;32m✓ PASS[0m - 5 concurrent requests completed in 0s
+
+[0;36mTest 12.6: Test mode header is case-insensitive[0m
+[0;32m✓ PASS[0m - Lowercase header accepted
+
+[0;36mTest 12.7: Invalid test mode value is ignored[0m
+[0;32m✓ PASS[0m - Invalid value handled correctly
+
+[0;36mTest 12.8: Verify test mode is development-only[0m
+[0;32m✓ PASS[0m - Running in development mode, test mode enabled
+
+==============================================
+   Suite 12 Summary: 8 passed, 0 failed
+==============================================
+
+[0;36m========================================[0m
+[0;36mRunning: api-suite-13-pdf-validation.sh[0m
+[0;36m========================================[0m
+==============================================
+   Suite 13: Enhanced PDF Validation Tests
+==============================================
+
+[0;36mTest 13.1: Valid PDF is accepted[0m
+[0;32m✓ PASS[0m - Valid PDF processed successfully
+
+[0;36mTest 13.2: Plain text renamed to .pdf is rejected[0m
+[0;32m✓ PASS[0m - Fake text PDF properly rejected
+
+[0;36mTest 13.3: HTML renamed to .pdf is rejected[0m
+[0;32m✓ PASS[0m - Fake HTML PDF properly rejected
+
+[0;36mTest 13.4: JPEG file renamed to .pdf is rejected[0m
+[0;32m✓ PASS[0m - Fake JPEG PDF properly rejected
+
+[0;36mTest 13.5: PNG file renamed to .pdf is rejected[0m
+[0;32m✓ PASS[0m - Fake PNG PDF properly rejected
+
+[0;36mTest 13.6: PDF with header but no EOF marker is rejected[0m
+[0;32m✓ PASS[0m - PDF without EOF properly rejected
+
+[0;36mTest 13.7: File with EOF but no PDF header is rejected[0m
+[0;32m✓ PASS[0m - File without PDF header properly rejected
+
+[0;36mTest 13.8: Empty file is rejected[0m
+[0;32m✓ PASS[0m - Empty file properly rejected
+
+[0;36mTest 13.9: Tiny file (< 8 bytes) is rejected[0m
+[0;32m✓ PASS[0m - Tiny file properly rejected
+
+[0;36mTest 13.10: Corrupted PDF structure is handled gracefully[0m
+[0;32m✓ PASS[0m - Corrupted PDF handled gracefully
+
+[0;36mTest 13.11: Batch with mixed valid/invalid files[0m
+[1;33m⚠ WARN[0m - HTTP 400, 0 results
+
+[0;36mTest 13.12: Magic number validation is strict[0m
+[0;32m✓ PASS[0m - Wrong magic number properly rejected
+
+==============================================
+   Suite 13 Summary: 12 passed, 0 failed
+==============================================
+
+   Test Files Created in: /mnt/c/Users/sirsw/OneDrive/Documents/vs code projects/screenr/Screenr/tests/.tmp/bash-runner/tests/fixtures/pdf-validation
+   - valid.pdf (real PDF)
+   - fake_text.pdf (text renamed)
+   - fake_html.pdf (HTML renamed)
+   - fake_jpeg.pdf (JPEG renamed)
+   - fake_png.pdf (PNG renamed)
+   - fake_no_eof.pdf (header only)
+   - fake_no_header.pdf (EOF only)
+   - corrupted.pdf (corrupted structure)
+   - empty.pdf (0 bytes)
+   - tiny.pdf (< 8 bytes)
+   - wrong_magic.pdf (wrong case)
+
+==============================================
+   FINAL SUMMARY
+==============================================
+
+Suites Passed:  12
+Suites Failed:  1
+
+[0;31m✗ Some API test suites failed.[0m

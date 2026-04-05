@@ -1,108 +1,123 @@
-# Screenr - Comprehensive Test Coverage Report
+# Screenr - Test Coverage And Latency Report
 
-**Generated:** 2026-04-03 17:48:32
+**Generated:** 2026-04-04 23:10 UTC
 **Base URL:** http://localhost:3000
-**Report Version:** 6.0
+**Report Version:** 7.0
 
 ---
 
-## Coverage Summary
+## Executive Summary
 
-| Test Type | Suites | Checks | Passed | Failed |
-|-----------|--------|--------|--------|--------|
-| Cypress E2E | 8 | 66 | 66 | 0 |
-| API Shell Suites | 13 | 118 | 118 | 0 |
-| Load Runner | 1 | 6 sections | 6 | 0 |
-| **TOTAL** | **22** | **184 + load scenarios** | **All passing** | **0** |
+- `npm run lint`: passing
+- Standard Cypress suite: **70 / 70 passing** across 9 specs
+- API shell rerun on Windows: shared Bash test harness repaired for this environment
+- Performance comparison captured for `1 x ~1MB` and `10 x ~1MB`
 
-### Current Automated Test Status: **100% passing**
+### Current Verified Status
 
----
-
-## Important Coverage Caveat
-
-This repository does **not** currently produce instrumented line/branch coverage from nyc/Cypress runs.
-
-- Cypress emitted `no coverage information` warnings during the latest run.
-- That means there is no authoritative generated line-by-line coverage artifact to publish today.
-- The values below remain maintained engineering estimates based on exercised features, not compiler/runtime instrumentation output.
+| Area | Status | Notes |
+|------|--------|-------|
+| Lint | ✅ | `eslint .` passed |
+| Cypress E2E | ✅ | 9 specs, 70 tests, 0 failures |
+| API shell suites | Partial rerun | Suites 01-06 were explicitly transcript-verified after harness fixes |
+| Load tests | Not rerun | Skipped intentionally to avoid super long runs |
 
 ---
 
-## Estimated Functional Coverage
+## Coverage Caveat
 
-| Area | Coverage Confidence | Notes |
-|------|---------------------|-------|
-| Page rendering and layout | High | Covered by suites 01, 04, 05 |
-| Form validation | High | Covered by Cypress and API validation suites |
-| File upload flow | High | Covered by Cypress suite 03 and API PDF suites |
-| Fake/invalid PDF rejection | High | Covered by Cypress suite 08 and API suite 13 |
-| Resume grading API | High | Covered by API suites 04, 05, 07, 08 |
-| Security and rate limiting | High | Covered by API suites 10 and 12 |
-| Dark mode | High | Covered by Cypress suite 06 and API suite 09 |
-| Error handling and recovery | High | Covered by Cypress suite 07 and API suite 11 |
+This repository still does **not** produce authoritative instrumented line or branch coverage.
 
-Estimated overall exercised behavior remains in the same range as prior reporting, but should be treated as **qualitative** until real instrumentation is added.
+- Cypress continues to emit `no coverage information` warnings.
+- That means this report is a **test execution coverage summary**, not a compiler-verified coverage export.
+- Functional coverage statements below are qualitative and based on the suites that were exercised.
 
 ---
 
-## Test Inventory
+## Verified Test Runs
 
-### Cypress E2E
+### Lint
 
-| Suite | Tests | Status |
-|-------|-------|--------|
+| Command | Result |
+|---------|--------|
+| `npm run lint` | ✅ Passing |
+
+### Standard Cypress E2E
+
+Full rerun completed successfully:
+
+| Suite | Tests | Result |
+|-------|------:|--------|
 | 01 - Page Load | 8 | ✅ |
 | 02 - Form Validation | 8 | ✅ |
-| 03 - File Upload | 8 | ✅ |
+| 03 - File Upload | 10 | ✅ |
 | 04 - Accessibility | 8 | ✅ |
 | 05 - Responsive Design | 8 | ✅ |
 | 06 - Dark Mode | 10 | ✅ |
 | 07 - Error Handling | 8 | ✅ |
 | 08 - Fake PDF Detection | 8 | ✅ |
+| 09 - Batch Grading Reliability | 2 | ✅ |
+| **Total** | **70** | **✅ 70 passing, 0 failing** |
 
-### API / Shell Suites
+### API Shell Suites
 
-| Suite | Checks | Status |
-|-------|--------|--------|
+The Windows plus WSL Bash path needed two fixes before rerun:
+
+1. Shell scripts needed LF normalization in the runnable mirror.
+2. `api-suite-02-endpoints.sh`, `api-suite-03-structure.sh`, and `api-suite-09-dark-mode.sh` were hardcoding `localhost` instead of using the shared `test-env.sh` base URL.
+
+After those fixes, these suites were explicitly rerun and transcript-verified:
+
+| Suite | Checks | Result |
+|-------|------:|--------|
 | 01 - Health | 5 | ✅ |
 | 02 - Endpoint Validation | 6 | ✅ |
 | 03 - Structure | 9 | ✅ |
 | 04 - PDF Processing | 6 | ✅ |
 | 05 - Response Validation | 10 | ✅ |
 | 06 - Error Handling | 5 | ✅ |
-| 07 - Integration | 6 | ✅ |
-| 08 - Performance | 10 | ✅ |
-| 09 - Dark Mode | 8 | ✅ |
-| 10 - Security | 19 | ✅ |
-| 11 - Error Handling | 14 | ✅ |
-| 12 - Test Mode | 8 | ✅ |
-| 13 - PDF Validation | 12 | ✅ |
+
+Suites 07-13 were not cleanly transcript-captured end-to-end through this terminal bridge during this run, so they are not being marked as freshly verified here.
 
 ---
 
-## Latest Performance Snapshot
+## Functional Coverage Confidence
 
-Taken from `tests/reports/load-test-report-20260403_174832.md`:
+| Area | Confidence | Basis |
+|------|------------|-------|
+| Page rendering and layout | High | Cypress suites 01, 04, 05 and API structure suite |
+| Form validation | High | Cypress suite 02 and API endpoint validation suite |
+| File upload flow | High | Cypress suite 03 and API PDF suite |
+| Invalid/fake PDF handling | High | Cypress suite 08 and API PDF handling rerun |
+| Batch grading UI behavior | High | Cypress suite 09 |
+| Error states and recovery | High | Cypress suite 07 and API error suite rerun |
+| Theme behavior | High | Cypress suite 06 |
+| Resume grading response shape | High | API response validation rerun |
 
-| Metric | Latest Result |
-|--------|---------------|
-| 5 concurrent users | 96ms avg |
-| 10 concurrent users | 128ms avg |
-| 20 concurrent users | 239ms avg |
-| 30 concurrent users | 295ms avg |
-| 50 concurrent users | 499ms avg |
-| 10-file batch | 72ms |
-| Memory stress | 20/20 successful |
+---
+
+## Latency Comparison
+
+Source artifact: `tests/reports/cypress-performance-batch-latest.md`
+
+| Scenario | UI time (ms) | API time (ms) | Result count | 30s target |
+|----------|-------------:|--------------:|-------------:|-----------|
+| 1 resume x ~1MB | 21678 | 21447.5 | 1 | met |
+| 10 resumes x ~1MB | 139971 | 139338.3 | 10 | missed |
+
+### Comparison Notes
+
+- `10 x ~1MB` is about **6.46x** slower than `1 x ~1MB` on end-to-end UI timing.
+- `1 x ~1MB` stays inside the 30 second target.
+- `10 x ~1MB` misses the 30 second target by about **110 seconds**.
+- The API time and UI time are close, which indicates backend grading dominates the end-to-end latency here.
 
 ---
 
 ## Recommended Next Step For Real Coverage
 
-To replace these estimates with authoritative numbers:
+To replace qualitative coverage with authoritative numbers:
 
-1. Instrument the Next.js app for nyc/browser coverage collection.
-2. Configure Cypress code coverage to merge browser coverage output.
-3. Regenerate this report from actual artifacts instead of maintained estimates.
-
-Until then, this document should be read as a **test execution coverage summary**, not a precise line/branch coverage export.
+1. Instrument the Next.js app for browser coverage collection.
+2. Merge that browser coverage into nyc during Cypress runs.
+3. Regenerate this report from actual coverage artifacts instead of execution summaries.

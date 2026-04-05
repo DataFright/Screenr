@@ -49,6 +49,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
 /** Maximum number of files per request */
 const MAX_FILES_PER_REQUEST = 10
 
+/** Maximum number of resume processing tasks to run concurrently */
+const MAX_GRADING_CONCURRENCY = 2
+
 /** Maximum text length to process from PDFs */
 const MAX_TEXT_LENGTH = 50000
 
@@ -81,6 +84,15 @@ const DEFAULT_OPENROUTER_MODEL = 'stepfun/step-3.5-flash:free'
 
 /** Optional app identifier sent to OpenRouter */
 const OPENROUTER_APP_NAME = 'Screenr'
+
+/** Hard timeout for a single OpenRouter grading request */
+const OPENROUTER_TIMEOUT_MS = 45000
+
+/** Number of retry attempts for transient OpenRouter failures */
+const OPENROUTER_MAX_ATTEMPTS = 2
+
+/** Base retry delay for transient OpenRouter failures */
+const OPENROUTER_RETRY_DELAY_MS = 1500
 
 // ============================================================================
 // TYPES
@@ -130,6 +142,32 @@ interface OpenRouterResponse {
     message?: OpenRouterResponseMessage
   }>
 }
+
+interface RequestTimingSummary {
+  formDataMs: number
+  requestValidationMs: number
+  fileValidationMs: number
+  pdfExtractionMs: number
+  aiGradingMs: number
+  totalMs: number
+  processedFiles: number
+}
+
+interface QueuedFile {
+  file: File
+  index: number
+}
+
+interface ProcessedResumeResult {
+  index: number
+  result: GradedResume
+  pdfExtractionMs: number
+  aiGradingMs: number
+}
+
+type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs')
+
+let pdfjsLibPromise: Promise<PdfJsModule> | null = null
 
 // ============================================================================
 // SECURITY UTILITIES
@@ -262,6 +300,170 @@ function extractOpenRouterTextContent(message?: OpenRouterResponseMessage): stri
     .join('')
 }
 
+function initializeRequestTimingSummary(): RequestTimingSummary {
+  return {
+    formDataMs: 0,
+    requestValidationMs: 0,
+    fileValidationMs: 0,
+    pdfExtractionMs: 0,
+    aiGradingMs: 0,
+    totalMs: 0,
+    processedFiles: 0,
+  }
+}
+
+function createTimingHeaders(timings: RequestTimingSummary): Headers {
+  const headers = new Headers()
+  const serverTimingValue = [
+    `formdata;dur=${timings.formDataMs.toFixed(1)}`,
+    `request-validation;dur=${timings.requestValidationMs.toFixed(1)}`,
+    `file-validation;dur=${timings.fileValidationMs.toFixed(1)}`,
+    `pdf-extraction;dur=${timings.pdfExtractionMs.toFixed(1)}`,
+    `ai-grading;dur=${timings.aiGradingMs.toFixed(1)}`,
+    `total;dur=${timings.totalMs.toFixed(1)}`,
+  ].join(', ')
+
+  headers.set('Server-Timing', serverTimingValue)
+  headers.set('X-Screenr-Total-Ms', timings.totalMs.toFixed(1))
+  headers.set('X-Screenr-Processed-Files', String(timings.processedFiles))
+
+  return headers
+}
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isRetryableOpenRouterFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+  return (
+    message.includes('status 408') ||
+    message.includes('status 429') ||
+    message.includes('status 500') ||
+    message.includes('status 502') ||
+    message.includes('status 503') ||
+    message.includes('status 504') ||
+    message.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('unexpected end of json input') ||
+    message.includes('unterminated string') ||
+    message.includes('bad control character') ||
+    message.includes('expected property name') ||
+    message.includes('openrouter returned an empty response') ||
+    message.includes('openrouter returned a non-json response') ||
+    message.includes('econnreset') ||
+    message.includes('socket hang up')
+  )
+}
+
+function extractJsonObject(text: string): string {
+  const trimmedText = text.trim()
+
+  if (trimmedText.startsWith('{') && trimmedText.endsWith('}')) {
+    return trimmedText
+  }
+
+  const firstBraceIndex = trimmedText.indexOf('{')
+  if (firstBraceIndex === -1) {
+    throw new Error('OpenRouter returned a non-JSON response')
+  }
+
+  let braceDepth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let index = firstBraceIndex; index < trimmedText.length; index += 1) {
+    const character = trimmedText[index]
+
+    if (isEscaped) {
+      isEscaped = false
+      continue
+    }
+
+    if (character === '\\') {
+      isEscaped = true
+      continue
+    }
+
+    if (character === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) {
+      continue
+    }
+
+    if (character === '{') {
+      braceDepth += 1
+    } else if (character === '}') {
+      braceDepth -= 1
+
+      if (braceDepth === 0) {
+        return trimmedText.slice(firstBraceIndex, index + 1)
+      }
+    }
+  }
+
+  throw new Error('OpenRouter returned an incomplete JSON response')
+}
+
+async function measureAsync<T>(operation: () => Promise<T>): Promise<{ result: T; durationMs: number }> {
+  const startedAt = performance.now()
+  const result = await operation()
+
+  return {
+    result,
+    durationMs: performance.now() - startedAt,
+  }
+}
+
+async function mapWithConcurrency<T, TResult>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<TResult>
+): Promise<TResult[]> {
+  if (items.length === 0) {
+    return []
+  }
+
+  const results = new Array<TResult>(items.length)
+  let nextIndex = 0
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const currentIndex = nextIndex
+      nextIndex += 1
+
+      if (currentIndex >= items.length) {
+        return
+      }
+
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex)
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length)
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
+
+  return results
+}
+
+async function getPdfJsLib(): Promise<PdfJsModule> {
+  if (!pdfjsLibPromise) {
+    pdfjsLibPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((pdfjsLib) => {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+      return pdfjsLib
+    })
+  }
+
+  return pdfjsLibPromise
+}
+
 /**
  * Validates email format using regex
  * 
@@ -333,10 +535,7 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   let pdf: Awaited<ReturnType<typeof import('pdfjs-dist/legacy/build/pdf.mjs').getDocument>['promise']> | null = null
   
   try {
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    
-    // Configure PDF.js worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+    const pdfjsLib = await getPdfJsLib()
     
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(buffer),
@@ -470,78 +669,93 @@ Grade the candidate from 0-100 in:
 
 Return ONLY valid JSON with no additional text or markdown.`
 
-  try {
-    const completionResponse = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${getOpenRouterApiKey()}`,
-        'Content-Type': 'application/json',
-        'X-Title': OPENROUTER_APP_NAME,
-      },
-      body: JSON.stringify({
-        model: getOpenRouterModel(),
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        reasoning: { enabled: true }
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= OPENROUTER_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const completionResponse = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
+        headers: {
+          Authorization: `Bearer ${getOpenRouterApiKey()}`,
+          'Content-Type': 'application/json',
+          'X-Title': OPENROUTER_APP_NAME,
+        },
+        body: JSON.stringify({
+          model: getOpenRouterModel(),
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          reasoning: { enabled: true }
+        })
       })
-    })
 
-    if (!completionResponse.ok) {
-      const errorBody = await completionResponse.text()
-      throw new Error(`OpenRouter request failed with status ${completionResponse.status}: ${errorBody}`)
-    }
-
-    const completion = await completionResponse.json() as OpenRouterResponse
-    const responseText = extractOpenRouterTextContent(completion.choices?.[0]?.message)
-    
-    // Clean up the response (remove markdown code blocks if present)
-    let cleanedResponse = responseText.trim()
-    if (cleanedResponse.startsWith('```json')) {
-      cleanedResponse = cleanedResponse.slice(7)
-    } else if (cleanedResponse.startsWith('```')) {
-      cleanedResponse = cleanedResponse.slice(3)
-    }
-    if (cleanedResponse.endsWith('```')) {
-      cleanedResponse = cleanedResponse.slice(0, -3)
-    }
-    cleanedResponse = cleanedResponse.trim()
-
-    const parsed = JSON.parse(cleanedResponse)
-    
-    // Validate and sanitize parsed data
-    const email = parsed.email && isValidEmail(parsed.email) 
-      ? sanitizeString(parsed.email, 254) 
-      : ''
-    const phone = parsed.phone && isValidPhone(parsed.phone) 
-      ? sanitizeString(parsed.phone, 20) 
-      : ''
-    
-    return {
-      fileName: sanitizeString(fileName, MAX_FILENAME_LENGTH),
-      candidateName: sanitizeString(parsed.candidateName || 'Unknown Candidate', 100),
-      email,
-      phone,
-      overallScore: clampScore(parsed.overallScore),
-      professionalism: {
-        score: clampScore(parsed.professionalism?.score),
-        explanation: sanitizeString(parsed.professionalism?.explanation || 'No explanation provided', 200)
-      },
-      qualifications: {
-        score: clampScore(parsed.qualifications?.score),
-        explanation: sanitizeString(parsed.qualifications?.explanation || 'No explanation provided', 200)
-      },
-      workExperience: {
-        score: clampScore(parsed.workExperience?.score),
-        explanation: sanitizeString(parsed.workExperience?.explanation || 'No explanation provided', 200)
+      if (!completionResponse.ok) {
+        const errorBody = await completionResponse.text()
+        throw new Error(`OpenRouter request failed with status ${completionResponse.status}: ${errorBody}`)
       }
+
+      const completion = await completionResponse.json() as OpenRouterResponse
+      const responseText = extractOpenRouterTextContent(completion.choices?.[0]?.message)
+
+      if (!responseText.trim()) {
+        throw new Error('OpenRouter returned an empty response')
+      }
+
+      let cleanedResponse = responseText.trim()
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.slice(7)
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.slice(3)
+      }
+      if (cleanedResponse.endsWith('```')) {
+        cleanedResponse = cleanedResponse.slice(0, -3)
+      }
+      cleanedResponse = cleanedResponse.trim()
+      cleanedResponse = extractJsonObject(cleanedResponse)
+
+      const parsed = JSON.parse(cleanedResponse)
+      const email = parsed.email && isValidEmail(parsed.email)
+        ? sanitizeString(parsed.email, 254)
+        : ''
+      const phone = parsed.phone && isValidPhone(parsed.phone)
+        ? sanitizeString(parsed.phone, 20)
+        : ''
+
+      return {
+        fileName: sanitizeString(fileName, MAX_FILENAME_LENGTH),
+        candidateName: sanitizeString(parsed.candidateName || 'Unknown Candidate', 100),
+        email,
+        phone,
+        overallScore: clampScore(parsed.overallScore),
+        professionalism: {
+          score: clampScore(parsed.professionalism?.score),
+          explanation: sanitizeString(parsed.professionalism?.explanation || 'No explanation provided', 200)
+        },
+        qualifications: {
+          score: clampScore(parsed.qualifications?.score),
+          explanation: sanitizeString(parsed.qualifications?.explanation || 'No explanation provided', 200)
+        },
+        workExperience: {
+          score: clampScore(parsed.workExperience?.score),
+          explanation: sanitizeString(parsed.workExperience?.explanation || 'No explanation provided', 200)
+        }
+      }
+    } catch (error) {
+      lastError = error
+
+      if (attempt === OPENROUTER_MAX_ATTEMPTS || !isRetryableOpenRouterFailure(error)) {
+        break
+      }
+
+      await delay(OPENROUTER_RETRY_DELAY_MS * attempt)
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('AI response parsing failed:', message)
-    throw new ProcessingError(ErrorCode.AI_ERROR, fileName, message)
   }
+
+  const message = lastError instanceof Error ? lastError.message : 'Unknown error'
+  console.error('AI response parsing failed:', message)
+  throw new ProcessingError(ErrorCode.AI_ERROR, fileName, message)
 }
 
 // ============================================================================
@@ -629,8 +843,10 @@ function validateFile(file: File): { valid: boolean; error?: string } {
  * @param results - Array of graded resumes
  * @returns JSON response with success status
  */
-function successResponse(results: GradedResume[]): NextResponse<ApiResponse> {
-  return NextResponse.json({ success: true, results })
+function successResponse(results: GradedResume[], timings?: RequestTimingSummary): NextResponse<ApiResponse> {
+  const headers = timings ? createTimingHeaders(timings) : undefined
+
+  return NextResponse.json({ success: true, results }, { headers })
 }
 
 /**
@@ -639,7 +855,9 @@ function successResponse(results: GradedResume[]): NextResponse<ApiResponse> {
  * @param error - APIError instance
  * @returns JSON response with error details and appropriate status code
  */
-function errorResponse(error: APIError): NextResponse<ApiResponse> {
+function errorResponse(error: APIError, timings?: RequestTimingSummary): NextResponse<ApiResponse> {
+  const headers = timings ? createTimingHeaders(timings) : undefined
+
   return NextResponse.json(
     {
       success: false,
@@ -649,8 +867,64 @@ function errorResponse(error: APIError): NextResponse<ApiResponse> {
         details: error.details,
       },
     },
-    { status: error.statusCode }
+    { status: error.statusCode, headers }
   )
+}
+
+async function processResumeFile(
+  queuedFile: QueuedFile,
+  jobTitle: string,
+  jobDescription: string
+): Promise<ProcessedResumeResult> {
+  const { file, index } = queuedFile
+
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    if (!isValidPDF(buffer)) {
+      return {
+        index,
+        result: createErrorResumeResult(file.name, 'Invalid PDF', 'File is not a valid PDF document'),
+        pdfExtractionMs: 0,
+        aiGradingMs: 0,
+      }
+    }
+
+    const { result: resumeText, durationMs: pdfExtractionMs } = await measureAsync(() => extractTextFromPDF(buffer))
+
+    if (!resumeText || resumeText.trim().length < 50) {
+      return {
+        index,
+        result: createErrorResumeResult(file.name, 'No Text Found', 'Could not extract readable text from this PDF'),
+        pdfExtractionMs,
+        aiGradingMs: 0,
+      }
+    }
+
+    const { result: gradedResume, durationMs: aiGradingMs } = await measureAsync(() => gradeResume(
+      resumeText,
+      jobTitle,
+      jobDescription,
+      file.name
+    ))
+
+    return {
+      index,
+      result: gradedResume,
+      pdfExtractionMs,
+      aiGradingMs,
+    }
+  } catch (error) {
+    return {
+      index,
+      result: error instanceof ProcessingError
+        ? createErrorResumeResult(file.name, 'Processing Error', error.message)
+        : createErrorResumeResult(file.name, 'Processing Error', 'Failed to process this resume'),
+      pdfExtractionMs: 0,
+      aiGradingMs: 0,
+    }
+  }
 }
 
 // ============================================================================
@@ -671,6 +945,9 @@ function errorResponse(error: APIError): NextResponse<ApiResponse> {
  * - error: { code, message, details? } (on failure)
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse>> {
+  const requestStartedAt = performance.now()
+  const timings = initializeRequestTimingSummary()
+
   try {
     // Security: Check content-length header to prevent oversized uploads
     const contentLength = request.headers.get('content-length')
@@ -680,12 +957,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
     // Parse form data
     let formData: FormData
+    const formDataStartedAt = performance.now()
     try {
       formData = await request.formData()
     } catch {
       throw new RequestError(ErrorCode.INVALID_REQUEST, 'Invalid request format')
     }
+    timings.formDataMs = performance.now() - formDataStartedAt
     
+    const requestValidationStartedAt = performance.now()
+
     // Validate job title
     const titleValidation = validateJobTitle(formData.get('jobTitle'))
     if (!titleValidation.valid) {
@@ -711,14 +992,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         `Maximum ${MAX_FILES_PER_REQUEST} files allowed`
       )
     }
+    timings.requestValidationMs = performance.now() - requestValidationStartedAt
 
-    const results: GradedResume[] = []
+    const orderedResults: Array<GradedResume | undefined> = new Array(filesRaw.length)
+    const queuedFiles: QueuedFile[] = []
 
-    // Process each file
-    for (const fileRaw of filesRaw) {
+    const fileValidationStartedAt = performance.now()
+
+    for (const [index, fileRaw] of filesRaw.entries()) {
       // Validate file object type
       if (!(fileRaw instanceof File)) {
-        results.push(createErrorResumeResult('unknown.pdf', 'Invalid File', 'Invalid file object'))
+        orderedResults[index] = createErrorResumeResult('unknown.pdf', 'Invalid File', 'Invalid file object')
         continue
       }
       
@@ -727,56 +1011,46 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       // Validate file constraints
       const fileValidation = validateFile(file)
       if (!fileValidation.valid) {
-        results.push(createErrorResumeResult(file.name, 'Invalid File', fileValidation.error || 'Invalid file'))
+        orderedResults[index] = createErrorResumeResult(file.name, 'Invalid File', fileValidation.error || 'Invalid file')
         continue
       }
 
-      try {
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
+      queuedFiles.push({ file, index })
+    }
+    timings.fileValidationMs = performance.now() - fileValidationStartedAt
 
-        // Security: Validate PDF magic number
-        if (!isValidPDF(buffer)) {
-          results.push(createErrorResumeResult(file.name, 'Invalid PDF', 'File is not a valid PDF document'))
-          continue
-        }
+    const processedResumes = await mapWithConcurrency(
+      queuedFiles,
+      MAX_GRADING_CONCURRENCY,
+      (queuedFile) => processResumeFile(
+        queuedFile,
+        titleValidation.sanitized!,
+        descriptionValidation.sanitized!
+      )
+    )
 
-        // Extract text from PDF
-        const resumeText = await extractTextFromPDF(buffer)
-
-        if (!resumeText || resumeText.trim().length < 50) {
-          results.push(createErrorResumeResult(file.name, 'No Text Found', 'Could not extract readable text from this PDF'))
-          continue
-        }
-
-        // Grade resume using AI
-        const gradedResume = await gradeResume(
-          resumeText, 
-          titleValidation.sanitized!, 
-          descriptionValidation.sanitized!, 
-          file.name
-        )
-        results.push(gradedResume)
-      } catch (error) {
-        // Handle processing errors gracefully
-        if (error instanceof ProcessingError) {
-          results.push(createErrorResumeResult(file.name, 'Processing Error', error.message))
-        } else {
-          results.push(createErrorResumeResult(file.name, 'Processing Error', 'Failed to process this resume'))
-        }
-      }
+    for (const processedResume of processedResumes) {
+      orderedResults[processedResume.index] = processedResume.result
+      timings.pdfExtractionMs += processedResume.pdfExtractionMs
+      timings.aiGradingMs += processedResume.aiGradingMs
     }
 
-    return successResponse(results)
+    const results = orderedResults.filter((result): result is GradedResume => result !== undefined)
+    timings.processedFiles = queuedFiles.length
+    timings.totalMs = performance.now() - requestStartedAt
+
+    return successResponse(results, timings)
   } catch (error) {
+    timings.totalMs = performance.now() - requestStartedAt
+
     // Handle known API errors
     if (error instanceof APIError) {
-      return errorResponse(error)
+      return errorResponse(error, timings)
     }
     
     // Log unexpected errors but don't expose details to client
     console.error('Unexpected error in grade API:', error)
-    return errorResponse(new APIError(ErrorCode.INTERNAL_ERROR))
+    return errorResponse(new APIError(ErrorCode.INTERNAL_ERROR), timings)
   }
 }
 

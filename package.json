@@ -7,8 +7,12 @@
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
+    "perf:fixtures": "node tests/scripts/generate-performance-fixtures.mjs",
     "test:api": "bash tests/api/run-all-suites.sh",
     "test:e2e": "bash tests/scripts/run-cypress-optimized.sh",
+    "test:load": "bash tests/load/load-test-runner.sh",
+    "test:performance:e2e": "npx cypress run --headless --config specPattern=cypress/e2e/performance-batch.cy.ts",
+    "test:performance": "npm run perf:fixtures && bash tests/api/api-suite-08-performance.sh && npm run test:performance:e2e && npm run test:load",
     "test": "npm run test:api && npm run test:e2e"
   },
   "dependencies": {

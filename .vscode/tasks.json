@@ -1,0 +1,77 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "screenr-api-performance",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"tests/api/api-suite-08-performance.sh"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "screenr-cypress-performance",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"cypress",
+				"run",
+				"--headless",
+				"--config",
+				"specPattern=cypress/e2e/performance-batch.cy.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "screenr-load-tests",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:load"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run 1MB Cypress performance spec",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:performance:e2e"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "cypress-basic-file-upload-check",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"cypress",
+				"run",
+				"--config",
+				"specPattern=cypress/e2e/*.cy.ts",
+				"--spec",
+				"cypress/e2e/suite-03-file-upload.cy.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "cypress-real-1mb-batch-check",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"cypress",
+				"run",
+				"--headless",
+				"--config",
+				"specPattern=cypress/e2e/performance-batch.cy.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		}
+	]
+}

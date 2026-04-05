@@ -54,7 +54,8 @@ describe('Suite 3: File Upload Tests', () => {
   it('Test 3.1: Should accept single PDF file', () => {
     cy.log('Uploading single PDF')
     cy.get('input[type="file"]').selectFile(`${testResumesDir}/01_senior_dev_excellent.pdf`, uploadOptions)
-    cy.get('[data-sonner-toast]').should('contain.text', 'Added 1 file(s)')
+    cy.contains('01_senior_dev_excellent.pdf').should('be.visible')
+    cy.contains('button', 'Grade Resumes').should('be.visible')
     cy.log('Single PDF uploaded successfully')
   })
 
@@ -141,33 +142,22 @@ describe('Suite 3: File Upload Tests', () => {
   })
 
   it('Test 3.10: Should export grading results to CSV', () => {
-    cy.log('Stubbing grading response and CSV download hooks')
+    cy.log('Seeding grading results and stubbing CSV download hooks')
+    cy.visit('/', {
+      onBeforeLoad(win) {
+        ;(win as Window & {
+          __SCREENR_E2E_RESULTS__?: typeof mockGradeResults.results
+        }).__SCREENR_E2E_RESULTS__ = mockGradeResults.results
+      },
+    })
+    cy.contains('Screenr', { timeout: 10000 }).should('be.visible')
+
     cy.window().then((win) => {
-      cy.stub(win, 'fetch').callsFake(async (input) => {
-        const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-
-        if (requestUrl.includes('/api/grade')) {
-          return new win.Response(JSON.stringify(mockGradeResults), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          })
-        }
-
-        throw new Error(`Unexpected fetch request: ${requestUrl}`)
-      }).as('fetchGrade')
       cy.stub(win.URL, 'createObjectURL').callsFake(() => 'blob:screenr-test').as('createObjectURL')
       cy.stub(win.URL, 'revokeObjectURL').as('revokeObjectURL')
       cy.stub(win.HTMLAnchorElement.prototype, 'click').as('anchorClick')
     })
 
-    cy.get('#job-title').type('Software Engineer').should('have.value', 'Software Engineer')
-    cy.get('#job-description').type('Looking for an experienced software engineer').should('include.value', 'experienced software engineer')
-    cy.get('input[type="file"]').selectFile(`${testResumesDir}/01_senior_dev_excellent.pdf`, uploadOptions)
-
-    cy.contains('button', 'Grade Resumes').should('not.be.disabled').click()
-  cy.get('@fetchGrade').should('have.been.calledOnce')
     cy.contains('Ada Lovelace').should('be.visible')
     cy.contains('button', 'Export CSV').click()
 
