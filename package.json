@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "dev": "next dev -p 3000 > dev.log 2>&1",
+    "build": "next build && node tests/scripts/prepare-standalone.mjs",
+    "start": "node tests/scripts/start-standalone.mjs",
     "lint": "eslint .",
     "perf:fixtures": "node tests/scripts/generate-performance-fixtures.mjs",
     "test:api": "bash tests/api/run-all-suites.sh",
@@ -13,7 +13,9 @@
     "test:load": "bash tests/load/load-test-runner.sh",
     "test:performance:e2e": "npx cypress run --headless --config specPattern=cypress/e2e/performance-batch.cy.ts",
     "test:performance": "npm run perf:fixtures && bash tests/api/api-suite-08-performance.sh && npm run test:performance:e2e && npm run test:load",
-    "test": "npm run test:api && npm run test:e2e"
+    "test": "npm run test:api && npm run test:e2e",
+    "report:test": "bash tests/scripts/generate-coverage-report.sh",
+    "verify:release": "npm run lint && npm run test && npm run test:performance && npm run build && npm run report:test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

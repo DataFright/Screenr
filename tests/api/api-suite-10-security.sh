@@ -21,6 +21,8 @@ echo "=============================================="
 PASSED=0
 FAILED=0
 
+NODE_BIN="$(command -v node || command -v node.exe || true)"
+
 # ============================================================================
 # INPUT VALIDATION TESTS
 # ============================================================================
@@ -65,7 +67,10 @@ fi
 
 # Test S.3: Path Traversal in Filename
 echo -e "\n${CYAN}Test S.3: Path Traversal Protection${NC}"
-RESPONSE=$(cd "$PROJECT_ROOT" && node <<'EOF'
+if [ -z "$NODE_BIN" ]; then
+    RESPONSE="node runtime unavailable"
+else
+    RESPONSE=$(cd "$PROJECT_ROOT" && "$NODE_BIN" <<'EOF'
 const fs = require('fs')
 const path = require('path')
 
@@ -73,12 +78,13 @@ async function main() {
     const filePath = path.join(process.cwd(), 'tests', 'fixtures', 'valid_resume.pdf')
     const form = new FormData()
     const blob = new Blob([fs.readFileSync(filePath)], { type: 'application/pdf' })
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000'
 
     form.append('jobTitle', 'Engineer')
     form.append('jobDescription', 'Test job')
     form.append('files', blob, '../../../etc/passwd')
 
-    const response = await fetch('http://localhost:3000/api/grade', {
+    const response = await fetch(`${baseUrl}/api/grade`, {
         method: 'POST',
         body: form,
     })
@@ -92,6 +98,8 @@ main().catch((error) => {
 })
 EOF
 )
+fi
+
 if echo "$RESPONSE" | grep -q 'Invalid\|error\|success'; then
     echo -e "${GREEN}✓ PASS${NC} - Path traversal blocked or sanitized"
     PASSED=$((PASSED + 1))

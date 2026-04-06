@@ -141,8 +141,9 @@ Multi-layer PDF validation to detect fake/malicious files:
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
+- Node.js 20+
+- npm 10+
+- OpenRouter API key
 
 ### Installation
 
@@ -171,8 +172,48 @@ npm run lint      # Run ESLint
 npm run test      # Run API + E2E suites
 npm run test:api  # Run all API shell suites
 npm run test:e2e  # Run all Cypress suites
+npm run test:load # Run load tests
+npm run test:performance # Run long performance and load verification
+npm run report:test # Regenerate the current test report summary
 npm run build     # Build for production
+npm run start     # Start standalone production server
+npm run verify:release # Full release gate: lint, tests, performance, build, report
 ```
+
+---
+
+## 🚢 Production Readiness
+
+### Required Environment Variables
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `OPENROUTER_API_KEY` | Yes | Authenticates grading requests to OpenRouter |
+| `OPENROUTER_MODEL` | No | Overrides the default StepFun model |
+| `STEP_KEY` | Optional fallback | Backward-compatible alias for the API key |
+
+### Release Gate
+
+Run the full deployment check before the first production release:
+
+```bash
+npm run verify:release
+```
+
+That workflow verifies:
+
+- ESLint passes
+- All API and Cypress suites pass
+- Long performance and load tests pass
+- The standalone production build completes
+- The summary report is regenerated in `tests/reports/test-coverage-report.md`
+
+### Deployment Notes
+
+- The app is built with `output: "standalone"` and can be started with `npm run start`.
+- `X-Test-Mode` is disabled automatically in production.
+- Rate limiting is currently in-memory. For multi-instance deployment, replace it with a shared store such as Redis.
+- Batch grading is functionally stable, but large multi-resume requests are still dominated by upstream AI latency.
 
 ---
 
@@ -202,7 +243,7 @@ screenr/
 │       ├── errors.ts               # Custom error classes
 │       └── utils.ts                # Utility functions
 ├── cypress/
-│   ├── e2e/                        # E2E test suites (8 suites, 66 tests)
+│   ├── e2e/                        # E2E test suites (9 specs, 70 tests)
 │   ├── fixtures/                   # Test data and resume PDFs
 │   └── support/                    # Cypress support files
 ├── tests/
@@ -210,7 +251,7 @@ screenr/
 │   ├── load/                       # Load test runner
 │   ├── scripts/                    # Test utility scripts
 │   ├── fixtures/                   # Test PDFs including fake PDFs
-│   └── reports/                    # Test reports (gitignored)
+│   └── reports/                    # Current verification reports
 ├── public/
 │   ├── favicon.svg                 # Custom Screenr favicon
 │   └── sitemap.xml                 # SEO sitemap
@@ -381,28 +422,43 @@ APIError (Base)
 
 ## ⚡ Performance
 
-Screenr is optimized for fast response times and efficient resource usage.
+Screenr is optimized for safe batch processing and predictable request handling, but end-to-end grading latency is still dominated by the upstream AI provider.
 
 ### Response Time Targets
 
-| Operation | Target | Typical |
-|-----------|--------|---------|
-| Health check | < 100ms | ~20ms |
-| Page load | < 500ms | ~40ms |
-| PDF extraction (avg) | < 2s | ~100ms |
-| AI grading (per resume) | < 10s | ~2-5s |
-| Full batch (10 resumes) | < 60s | ~30-50s |
+| Operation | Target | Latest Verified |
+|-----------|--------|-----------------|
+| Health check | < 100ms | Met in API/load suites |
+| Page load | < 1s | Met in Cypress/API suites |
+| Single resume (~1MB) | < 30s | ~21.7s |
+| Batch of 10 resumes (~1MB each) | < 30s | ~140s |
+| Full load runner | Pass | Passing |
 
-### Load Capacity (Verified 2026-03-28)
+### Current Capacity Notes
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| **Concurrent Users** | 50+ | 100% success rate at 50 concurrent users |
+| **Concurrent Users** | 50+ | Load runner has passed at 50 concurrent requests |
 | **Max Files per Request** | 10 | Hard limit enforced by API |
 | **Max File Size** | 10MB | Per file limit |
 | **Max Total Upload** | ~150MB | 10 files × 10MB + form overhead |
 | **Max PDF Pages** | 50 | Per file, prevents timeout |
-| **Rate Limit (Grade API)** | 5/min | Per IP, bypassed in test mode |
+| **Rate Limit (Grade API)** | 5/min | Per IP, bypassed only outside production test runs |
+
+### Latest Batch Latency Snapshot
+
+Source artifact: `tests/reports/cypress-performance-batch-latest.md`
+
+| Scenario | UI time (ms) | API time (ms) | Result count | 30s target |
+|----------|-------------:|--------------:|-------------:|-----------|
+| 1 resume x ~1MB | 21678 | 21447.5 | 1 | met |
+| 10 resumes x ~1MB | 139971 | 139338.3 | 10 | missed |
+
+### Interpretation
+
+- Large batches are reliable but not yet inside a 30 second UX target.
+- The close alignment between UI and API timings shows the backend grading call dominates the total latency.
+- For first production deployment, treat large-batch latency as a known operational limitation rather than a correctness blocker.
 
 ### Load Test Results
 
@@ -437,17 +493,17 @@ Screenr is optimized for fast response times and efficient resource usage.
 
 ## 🧪 Testing
 
-Screenr has a comprehensive test suite with **200+ tests** across **21 test suites**.
+Screenr has a comprehensive test suite with API, Cypress, load, and performance verification paths.
 
 ### Test Coverage Summary
 
 | Category | Suites | Tests | Status |
 |----------|--------|-------|--------|
-| **E2E (Cypress)** | 8 | 66 | ✅ All passing |
-| **API (Shell)** | 13 | 110+ | ✅ All passing |
+| **E2E (Cypress)** | 9 | 70 | ✅ All passing |
+| **API (Shell)** | 13 | 118 | ✅ All passing |
 | **Load Tests** | 1 | 6 | ✅ All passing |
 
-### E2E Tests (Cypress) - 8 Suites, 66 Tests
+### E2E Tests (Cypress) - 9 Specs, 70 Tests
 
 | Suite | Tests | Focus Area |
 |-------|-------|------------|
@@ -459,6 +515,7 @@ Screenr has a comprehensive test suite with **200+ tests** across **21 test suit
 | Suite 6: Dark Mode | 10 | Toggle, persistence, localStorage |
 | Suite 7: Error Handling | 8 | Validation errors, edge cases |
 | Suite 8: Fake PDF Detection | 8 | Fake PDFs, renamed files |
+| Suite 9: Batch Grading Reliability | 2 | Multi-file grading success and stability |
 
 ### API Tests (Shell) - 13 Suites
 
@@ -484,11 +541,17 @@ Screenr has a comprehensive test suite with **200+ tests** across **21 test suit
 # Run all automated test suites
 npm test
 
+# Run the full deployment gate
+npm run verify:release
+
 # Run all Cypress E2E tests
 npm run test:e2e
 
 # Run all API test suites
 npm run test:api
+
+# Regenerate the summary report from the latest artifacts
+npm run report:test
 
 # Run specific API suite
 bash tests/api/api-suite-10-security.sh
@@ -499,6 +562,8 @@ bash tests/load/load-test-runner.sh
 # Run optimized Cypress tests (with memory management)
 bash tests/scripts/run-cypress-optimized.sh
 ```
+
+The maintained summary report lives in `tests/reports/test-coverage-report.md` and is regenerated from the latest test artifacts.
 
 ---
 

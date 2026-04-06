@@ -1,6 +1,6 @@
 # Screenr - Test Coverage And Latency Report
 
-**Generated:** 2026-04-04 23:10 UTC
+**Generated:** 2026-04-04 23:55 UTC
 **Base URL:** http://localhost:3000
 **Report Version:** 7.0
 
@@ -10,8 +10,9 @@
 
 - `npm run lint`: passing
 - Standard Cypress suite: **70 / 70 passing** across 9 specs
-- API shell rerun on Windows: shared Bash test harness repaired for this environment
-- Performance comparison captured for `1 x ~1MB` and `10 x ~1MB`
+- Non-long API shell suites: rerun successfully, with suite `08` intentionally skipped because it is the long performance suite
+- Batch/integration tests now fail unless each uploaded resume gets a real returned grade
+- Performance comparison remains captured for `1 x ~1MB` and `10 x ~1MB`
 
 ### Current Verified Status
 
@@ -19,7 +20,7 @@
 |------|--------|-------|
 | Lint | ✅ | `eslint .` passed |
 | Cypress E2E | ✅ | 9 specs, 70 tests, 0 failures |
-| API shell suites | Partial rerun | Suites 01-06 were explicitly transcript-verified after harness fixes |
+| API shell suites | ✅ Fast set passing | Suites 01-07 and 09-13 rerun; suite 08 skipped intentionally as the long performance suite |
 | Load tests | Not rerun | Skipped intentionally to avoid super long runs |
 
 ---
@@ -66,7 +67,7 @@ The Windows plus WSL Bash path needed two fixes before rerun:
 1. Shell scripts needed LF normalization in the runnable mirror.
 2. `api-suite-02-endpoints.sh`, `api-suite-03-structure.sh`, and `api-suite-09-dark-mode.sh` were hardcoding `localhost` instead of using the shared `test-env.sh` base URL.
 
-After those fixes, these suites were explicitly rerun and transcript-verified:
+After those fixes, these non-long suites were rerun and transcript-verified:
 
 | Suite | Checks | Result |
 |-------|------:|--------|
@@ -76,8 +77,16 @@ After those fixes, these suites were explicitly rerun and transcript-verified:
 | 04 - PDF Processing | 6 | ✅ |
 | 05 - Response Validation | 10 | ✅ |
 | 06 - Error Handling | 5 | ✅ |
+| 07 - Integration | 6 | ✅ |
+| 09 - Dark Mode | 8 | ✅ |
+| 10 - Security | 19 | ✅ |
+| 11 - Error Handling | 14 | ✅ |
+| 12 - Test Mode | 8 | ✅ |
+| 13 - PDF Validation | 12 | ✅ |
 
-Suites 07-13 were not cleanly transcript-captured end-to-end through this terminal bridge during this run, so they are not being marked as freshly verified here.
+Suite `08 - Performance` was not rerun in this pass because it is part of the intentionally skipped super-long test path.
+
+The integration and performance-oriented API assertions were also tightened so successful multi-file scenarios now require a returned non-error grade for each uploaded resume, not just a matching result count.
 
 ---
 

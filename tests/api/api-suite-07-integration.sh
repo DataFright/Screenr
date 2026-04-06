@@ -25,6 +25,22 @@ PASSED=0
 FAILED=0
 SKIPPED=0
 
+has_successful_grade_results() {
+    local body="$1"
+    local expected_count="$2"
+    local result_count
+    local success_count
+
+    result_count=$(echo "$body" | grep -o '"fileName"' | wc -l | tr -d ' ')
+    success_count=$(echo "$body" | grep -oE '"overallScore":[1-9][0-9]*' | wc -l | tr -d ' ')
+
+    if echo "$body" | grep -q '"candidateName":"Processing Error"'; then
+        return 1
+    fi
+
+    [ "$result_count" -eq "$expected_count" ] && [ "$success_count" -eq "$expected_count" ]
+}
+
 # Test 7.1: Senior developer resume grades successfully
 echo -e "\n${CYAN}Test 7.1: Senior developer resume grades successfully${NC}"
 if [ -f "$REAL_RESUME_DIR/01_senior_dev_excellent.pdf" ]; then
@@ -37,7 +53,7 @@ if [ -f "$REAL_RESUME_DIR/01_senior_dev_excellent.pdf" ]; then
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     BODY=$(echo "$RESPONSE" | head -n -1)
     
-    if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q '"overallScore"'; then
+    if [ "$HTTP_CODE" = "200" ] && has_successful_grade_results "$BODY" 1; then
         echo -e "${GREEN}✓ PASS${NC} - Resume processed successfully"
         PASSED=$((PASSED + 1))
     else
@@ -62,9 +78,9 @@ if [ -f "$REAL_RESUME_DIR/01_senior_dev_excellent.pdf" ] && [ -f "$REAL_RESUME_D
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     BODY=$(echo "$RESPONSE" | head -n -1)
     
-    RESULT_COUNT=$(echo "$BODY" | grep -o '"overallScore"' | wc -l)
-    if [ "$HTTP_CODE" = "200" ] && [ "$RESULT_COUNT" -ge 2 ]; then
-        echo -e "${GREEN}✓ PASS${NC} - $RESULT_COUNT resumes processed"
+    RESULT_COUNT=$(echo "$BODY" | grep -o '"overallScore"' | wc -l | tr -d ' ')
+    if [ "$HTTP_CODE" = "200" ] && has_successful_grade_results "$BODY" 2; then
+        echo -e "${GREEN}✓ PASS${NC} - $RESULT_COUNT resumes processed with returned grades"
         PASSED=$((PASSED + 1))
     else
         echo -e "${RED}✗ FAIL${NC} - Only $RESULT_COUNT result - HTTP $HTTP_CODE"
@@ -87,7 +103,7 @@ if [ -f "$REAL_RESUME_DIR/03_entry_level_good.pdf" ]; then
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     BODY=$(echo "$RESPONSE" | head -n -1)
     
-    if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q '"overallScore"'; then
+    if [ "$HTTP_CODE" = "200" ] && has_successful_grade_results "$BODY" 1; then
         echo -e "${GREEN}✓ PASS${NC} - Entry level resume processed"
         PASSED=$((PASSED + 1))
     else
@@ -109,9 +125,10 @@ if [ -f "$REAL_RESUME_DIR/04_poor_quality.pdf" ]; then
         -F "files=@$REAL_RESUME_DIR/04_poor_quality.pdf" \
         --max-time 120)
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+    BODY=$(echo "$RESPONSE" | head -n -1)
     
-    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "500" ]; then
-        echo -e "${GREEN}✓ PASS${NC} - Poor resume handled - HTTP $HTTP_CODE"
+    if [ "$HTTP_CODE" = "200" ] && has_successful_grade_results "$BODY" 1; then
+        echo -e "${GREEN}✓ PASS${NC} - Poor resume handled with returned grade"
         PASSED=$((PASSED + 1))
     else
         echo -e "${RED}✗ FAIL${NC} - HTTP $HTTP_CODE"
@@ -133,8 +150,10 @@ if [ -f "$REAL_RESUME_DIR/05_unrelated_chef.pdf" ]; then
         --max-time 120)
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     
-    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "500" ]; then
-        echo -e "${GREEN}✓ PASS${NC} - Chef resume handled - HTTP $HTTP_CODE"
+    BODY=$(echo "$RESPONSE" | head -n -1)
+
+    if [ "$HTTP_CODE" = "200" ] && has_successful_grade_results "$BODY" 1; then
+        echo -e "${GREEN}✓ PASS${NC} - Chef resume handled with returned grade"
         PASSED=$((PASSED + 1))
     else
         echo -e "${RED}✗ FAIL${NC} - HTTP $HTTP_CODE"
@@ -156,8 +175,10 @@ if [ -f "$REAL_RESUME_DIR/06_overqualified.pdf" ]; then
         --max-time 120)
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     
-    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "500" ]; then
-        echo -e "${GREEN}✓ PASS${NC} - Overqualified handled - HTTP $HTTP_CODE"
+    BODY=$(echo "$RESPONSE" | head -n -1)
+
+    if [ "$HTTP_CODE" = "200" ] && has_successful_grade_results "$BODY" 1; then
+        echo -e "${GREEN}✓ PASS${NC} - Overqualified handled with returned grade"
         PASSED=$((PASSED + 1))
     else
         echo -e "${RED}✗ FAIL${NC} - HTTP $HTTP_CODE"

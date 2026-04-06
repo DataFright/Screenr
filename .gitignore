@@ -12,6 +12,12 @@ node_modules
 
 # testing
 /coverage
+/.nyc_output/
+/cypress/screenshots/
+/cypress/videos/
+/tests/.tmp/
+/tests/reports/*.txt
+/tests/reports/load-test-report-*.md
 
 # next.js
 /.next/
@@ -49,3 +55,6 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+!tests/reports/cypress-performance-batch-latest.md
+!tests/reports/test-coverage-report.md

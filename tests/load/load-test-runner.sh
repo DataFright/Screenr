@@ -39,15 +39,15 @@ set -e
 # Directory paths - derived from script location for portability
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-FIXTURES_DIR="$PROJECT_ROOT/tests/fixtures"    # Test PDF files
-REPORTS_DIR="$PROJECT_ROOT/tests/reports"      # Output reports
+source "$PROJECT_ROOT/tests/scripts/test-env.sh"
+FIXTURES_DIR="$TEST_FIXTURES_DIR"             # Test PDF files
+REPORTS_DIR="$TEST_REPORTS_DIR"               # Output reports
 
 # Timestamp for unique report filename
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 REPORT_FILE="$REPORTS_DIR/load-test-report-$TIMESTAMP.md"
 
 # API configuration
-BASE_URL="http://localhost:3000"               # Development server URL
 TEST_MODE_HEADER="X-Test-Mode: true"           # Bypasses rate limiting in dev
 
 # Terminal color codes for readable output
@@ -101,7 +101,7 @@ check_server() {
         log_success "Server is running at $BASE_URL"
         return 0
     else
-        log_error "Server is not running. Please start with 'bun run dev'"
+        log_error "Server is not running. Please start with 'npm run dev'"
         exit 1
     fi
 }

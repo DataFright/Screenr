@@ -28,6 +28,22 @@ PASSED=0
 FAILED=0
 WARNINGS=0
 
+has_successful_grade_results() {
+    local body_file="$1"
+    local expected_count="$2"
+    local result_count
+    local success_count
+
+    result_count=$(grep -o '"fileName"' "$body_file" | wc -l | tr -d ' ')
+    success_count=$(grep -oE '"overallScore":[1-9][0-9]*' "$body_file" | wc -l | tr -d ' ')
+
+    if grep -q '"candidateName":"Processing Error"' "$body_file"; then
+        return 1
+    fi
+
+    [ "$result_count" -eq "$expected_count" ] && [ "$success_count" -eq "$expected_count" ]
+}
+
 run_full_batch_profile() {
     local label="$1"
     local fixture_dir="$2"
@@ -53,8 +69,8 @@ run_full_batch_profile() {
 
     echo "   HTTP: $http_code, UI/API wall time: ${elapsed_ms}ms, server timing: ${server_total_ms:-n/a}ms, results: $result_count"
 
-    if [ "$http_code" = "200" ] && [ "$result_count" -eq "$expected_count" ]; then
-        echo -e "${GREEN}✓ PASS${NC} - ${label} batch completed successfully"
+    if [ "$http_code" = "200" ] && has_successful_grade_results "$body_file" "$expected_count"; then
+        echo -e "${GREEN}✓ PASS${NC} - ${label} batch completed successfully with a returned grade for every resume"
         PASSED=$((PASSED + 1))
     else
         echo -e "${RED}✗ FAIL${NC} - ${label} batch failed (HTTP $http_code, results $result_count/$expected_count)"
