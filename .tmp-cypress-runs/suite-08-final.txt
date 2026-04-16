@@ -1,0 +1,74 @@
+
+Warning: The allowCypressEnv configuration option is enabled. This allows any browser code to read values from Cypress.env(). This is insecure and will be removed in a future major version.
+
+1. Replace Cypress.env() calls with cy.env() (for sensitive values) or Cypress.expose() (for public configuration)
+2. Set allowCypressEnv: false in your Cypress configuration to disable Cypress.env()
+
+Learn more: https://on.cypress.io/cypress-env-migration
+
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        15.13.0                                                                        │
+  │ Browser:        Electron 138 (headless)                                                        │
+  │ Node Version:   v25.8.1 (C:\Program Files\nodejs\node.exe)                                     │
+  │ Specs:          1 found (suite-08-fake-pdf.cy.ts)                                              │
+  │ Searched:       C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\cypress\e2e │
+  │                 \suite-08-fake-pdf.cy.ts                                                       │
+  │ Experiments:    experimentalMemoryManagement=true                                              │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  suite-08-fake-pdf.cy.ts                                                         (1 of 1)
+Warning: The following browser launch options were provided but are not supported by electron
+
+ - args
+
+
+  Suite 8: Fake PDF Detection Tests
+    √ Test 8.1: Should reject text file renamed to .pdf (696ms)
+    √ Test 8.2: Should reject HTML file renamed to .pdf (198ms)
+    √ Test 8.3: Should reject empty file with .pdf extension (197ms)
+    √ Test 8.4: Should handle file with wrong MIME type (176ms)
+    √ Test 8.5: Should show user-friendly error for invalid PDF (379ms)
+    √ Test 8.6: Should process valid PDF after invalid one (1808ms)
+    √ Test 8.7: Should handle multiple fake PDFs in batch (216ms)
+⚠️ file C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\.nyc_output\out.json has no coverage information
+Did you forget to instrument your web application? Read https://github.com/cypress-io/code-coverage#instrument-your-application
+    √ Test 8.8: Should clear invalid files and accept valid ones (2102ms)
+
+
+  8 passing (6s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        8                                                                                │
+  │ Passing:      8                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     6 seconds                                                                        │
+  │ Spec Ran:     suite-08-fake-pdf.cy.ts                                                          │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ √  suite-08-fake-pdf.cy.ts                  00:06        8        8        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    √  All specs passed!                        00:06        8        8        -        -        -  
+

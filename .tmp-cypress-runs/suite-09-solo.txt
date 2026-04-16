@@ -1,0 +1,68 @@
+
+Warning: The allowCypressEnv configuration option is enabled. This allows any browser code to read values from Cypress.env(). This is insecure and will be removed in a future major version.
+
+1. Replace Cypress.env() calls with cy.env() (for sensitive values) or Cypress.expose() (for public configuration)
+2. Set allowCypressEnv: false in your Cypress configuration to disable Cypress.env()
+
+Learn more: https://on.cypress.io/cypress-env-migration
+
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        15.13.0                                                                        │
+  │ Browser:        Electron 138 (headless)                                                        │
+  │ Node Version:   v25.8.1 (C:\Program Files\nodejs\node.exe)                                     │
+  │ Specs:          1 found (suite-09-batch-grading.cy.ts)                                         │
+  │ Searched:       C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\cypress\e2e │
+  │                 \suite-09-batch-grading.cy.ts                                                  │
+  │ Experiments:    experimentalMemoryManagement=true                                              │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  suite-09-batch-grading.cy.ts                                                    (1 of 1)
+Warning: The following browser launch options were provided but are not supported by electron
+
+ - args
+
+
+  Suite 9: Batch Grading Reliability
+    √ Test 9.1: Should surface partial grading failures clearly (4802ms)
+⚠️ file C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\.nyc_output\out.json has no coverage information
+Did you forget to instrument your web application? Read https://github.com/cypress-io/code-coverage#instrument-your-application
+    √ Test 9.2: Should treat a full 10 resume batch as successful only when all grades succeed (3958ms)
+
+
+  2 passing (9s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        2                                                                                │
+  │ Passing:      2                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     9 seconds                                                                        │
+  │ Spec Ran:     suite-09-batch-grading.cy.ts                                                     │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ √  suite-09-batch-grading.cy.ts             00:09        2        2        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    √  All specs passed!                        00:09        2        2        -        -        -  
+

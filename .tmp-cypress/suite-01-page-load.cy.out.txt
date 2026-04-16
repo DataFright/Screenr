@@ -1,0 +1,72 @@
+
+Warning: The allowCypressEnv configuration option is enabled. This allows any browser code to read values from Cypress.env(). This is insecure and will be removed in a future major version.
+
+1. Replace Cypress.env() calls with cy.env() (for sensitive values) or Cypress.expose() (for public configuration)
+2. Set allowCypressEnv: false in your Cypress configuration to disable Cypress.env()
+
+Learn more: https://on.cypress.io/cypress-env-migration
+
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        15.13.0                                                                        │
+  │ Browser:        Electron 138 (headless)                                                        │
+  │ Node Version:   v25.8.1 (C:\Program Files\nodejs\node.exe)                                     │
+  │ Specs:          1 found (suite-01-page-load.cy.ts)                                             │
+  │ Searched:       C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\cypress\e2e │
+  │                 \suite-01-page-load.cy.ts                                                      │
+  │ Experiments:    experimentalMemoryManagement=true                                              │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  suite-01-page-load.cy.ts                                                        (1 of 1)
+Warning: The following browser launch options were provided but are not supported by electron
+
+ - args
+
+
+  Suite 1: Page Load Tests
+    √ Test 1.1: Should load the main page successfully (648ms)
+    √ Test 1.2: Should display Job Details section (185ms)
+    √ Test 1.3: Should display Upload Resumes section (164ms)
+    √ Test 1.4: Should display Grading Results section (150ms)
+    √ Test 1.5: Should have disabled grade button initially (158ms)
+    √ Test 1.6: Should display privacy footer (172ms)
+    √ Test 1.7: Should have file input with PDF filter (160ms)
+    √ Test 1.8: Should have Clear All button (145ms)
+
+
+  8 passing (3s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        8                                                                                │
+  │ Passing:      8                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     3 seconds                                                                        │
+  │ Spec Ran:     suite-01-page-load.cy.ts                                                         │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ √  suite-01-page-load.cy.ts                 00:03        8        8        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    √  All specs passed!                        00:03        8        8        -        -        -  
+

@@ -1,0 +1,72 @@
+
+Warning: The allowCypressEnv configuration option is enabled. This allows any browser code to read values from Cypress.env(). This is insecure and will be removed in a future major version.
+
+1. Replace Cypress.env() calls with cy.env() (for sensitive values) or Cypress.expose() (for public configuration)
+2. Set allowCypressEnv: false in your Cypress configuration to disable Cypress.env()
+
+Learn more: https://on.cypress.io/cypress-env-migration
+
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        15.13.0                                                                        │
+  │ Browser:        Electron 138 (headless)                                                        │
+  │ Node Version:   v25.8.1 (C:\Program Files\nodejs\node.exe)                                     │
+  │ Specs:          1 found (suite-02-form-validation.cy.ts)                                       │
+  │ Searched:       C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\cypress\e2e │
+  │                 \suite-02-form-validation.cy.ts                                                │
+  │ Experiments:    experimentalMemoryManagement=true                                              │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  suite-02-form-validation.cy.ts                                                  (1 of 1)
+Warning: The following browser launch options were provided but are not supported by electron
+
+ - args
+
+
+  Suite 2: Form Validation Tests
+    √ Test 2.1: Should enable grade button after filling form (1872ms)
+    √ Test 2.2: Should clear all form data when clicking Clear All (1346ms)
+    √ Test 2.3: Should show toast notification when clearing (631ms)
+    √ Test 2.4: Should have textarea for job description (172ms)
+    √ Test 2.5: Should accept text input in job title (891ms)
+    √ Test 2.6: Should accept text in job description (1696ms)
+    √ Test 2.7: Should show empty state before grading (195ms)
+    √ Test 2.8: Should have upload area with instructions (164ms)
+
+
+  8 passing (7s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        8                                                                                │
+  │ Passing:      8                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     7 seconds                                                                        │
+  │ Spec Ran:     suite-02-form-validation.cy.ts                                                   │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ √  suite-02-form-validation.cy.ts           00:07        8        8        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    √  All specs passed!                        00:07        8        8        -        -        -  
+

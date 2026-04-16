@@ -1,0 +1,76 @@
+
+Warning: The allowCypressEnv configuration option is enabled. This allows any browser code to read values from Cypress.env(). This is insecure and will be removed in a future major version.
+
+1. Replace Cypress.env() calls with cy.env() (for sensitive values) or Cypress.expose() (for public configuration)
+2. Set allowCypressEnv: false in your Cypress configuration to disable Cypress.env()
+
+Learn more: https://on.cypress.io/cypress-env-migration
+
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        15.13.0                                                                        │
+  │ Browser:        Electron 138 (headless)                                                        │
+  │ Node Version:   v25.8.1 (C:\Program Files\nodejs\node.exe)                                     │
+  │ Specs:          1 found (suite-06-dark-mode.cy.ts)                                             │
+  │ Searched:       C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\cypress\e2e │
+  │                 \suite-06-dark-mode.cy.ts                                                      │
+  │ Experiments:    experimentalMemoryManagement=true                                              │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  suite-06-dark-mode.cy.ts                                                        (1 of 1)
+Warning: The following browser launch options were provided but are not supported by electron
+
+ - args
+
+
+  Suite 6: Dark Mode Tests
+    √ Test 6.1: Should default to light mode on first visit (821ms)
+    √ Test 6.2: Should display theme toggle button (323ms)
+    √ Test 6.3: Should show moon icon in light mode (220ms)
+    √ Test 6.4: Should toggle to dark mode on click (622ms)
+    √ Test 6.5: Should show sun icon in dark mode (581ms)
+    √ Test 6.6: Should toggle back to light mode (674ms)
+    √ Test 6.7: Should persist theme preference in localStorage (620ms)
+    √ Test 6.8: Should restore theme from localStorage on reload (725ms)
+    √ Test 6.9: Should have accessible label for screen readers (340ms)
+⚠️ file C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\.nyc_output\out.json has no coverage information
+Did you forget to instrument your web application? Read https://github.com/cypress-io/code-coverage#instrument-your-application
+    √ Test 6.10: Should be keyboard accessible (211ms)
+
+
+  10 passing (6s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        10                                                                               │
+  │ Passing:      10                                                                               │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     5 seconds                                                                        │
+  │ Spec Ran:     suite-06-dark-mode.cy.ts                                                         │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ √  suite-06-dark-mode.cy.ts                 00:05       10       10        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    √  All specs passed!                        00:05       10       10        -        -        -  
+

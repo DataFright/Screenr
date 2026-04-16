@@ -1,0 +1,2 @@
+⚠️ file C:\Users\sirsw\OneDrive\Documents\vs code projects\screenr\Screenr\.nyc_output\out.json has no coverage information
+Did you forget to instrument your web application? Read https://github.com/cypress-io/code-coverage#instrument-your-application
