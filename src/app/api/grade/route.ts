@@ -33,6 +33,9 @@ import {
   RequestError,
 } from '@/lib/errors'
 
+export const runtime = 'nodejs'
+export const maxDuration = 60
+
 // ============================================================================
 // SECURITY CONSTANTS
 // ============================================================================
@@ -93,6 +96,9 @@ const OPENROUTER_MAX_ATTEMPTS = 2
 
 /** Base retry delay for transient OpenRouter failures */
 const OPENROUTER_RETRY_DELAY_MS = 1500
+
+/** Enables verbose server-side diagnostics for production debugging */
+const SCREENR_DEBUG_ENABLED = process.env.SCREENR_DEBUG === 'true'
 
 // ============================================================================
 // TYPES
@@ -281,6 +287,10 @@ function getOpenRouterApiKey(): string {
   return apiKey
 }
 
+function hasOpenRouterApiKey(): boolean {
+  return Boolean(process.env.OPENROUTER_API_KEY || process.env.STEP_KEY || process.env.StepKey)
+}
+
 function getOpenRouterModel(): string {
   return process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL
 }
@@ -328,6 +338,36 @@ function createTimingHeaders(timings: RequestTimingSummary): Headers {
   headers.set('X-Screenr-Processed-Files', String(timings.processedFiles))
 
   return headers
+}
+
+function createRequestId(): string {
+  return crypto.randomUUID().slice(0, 8)
+}
+
+function truncateForLog(value: string, maxLength: number = 500): string {
+  if (value.length <= maxLength) {
+    return value
+  }
+
+  return `${value.slice(0, maxLength)}...`
+}
+
+function withRequestId(headers: Headers | undefined, requestId: string): Headers {
+  const nextHeaders = headers ?? new Headers()
+  nextHeaders.set('X-Screenr-Request-Id', requestId)
+  return nextHeaders
+}
+
+function logGradeInfo(message: string, requestId: string, metadata?: Record<string, unknown>): void {
+  console.info(`[screenr-grade:${requestId}] ${message}`, metadata ?? {})
+}
+
+function logGradeWarn(message: string, requestId: string, metadata?: Record<string, unknown>): void {
+  console.warn(`[screenr-grade:${requestId}] ${message}`, metadata ?? {})
+}
+
+function logGradeError(message: string, requestId: string, metadata?: Record<string, unknown>): void {
+  console.error(`[screenr-grade:${requestId}] ${message}`, metadata ?? {})
 }
 
 async function delay(ms: number): Promise<void> {
@@ -614,7 +654,8 @@ async function gradeResume(
   resumeText: string,
   jobTitle: string,
   jobDescription: string,
-  fileName: string
+  fileName: string,
+  requestId: string
 ): Promise<GradedResume> {
   // Sanitize inputs for AI prompt
   const safeJobTitle = sanitizeString(jobTitle, MAX_JOB_TITLE_LENGTH)
@@ -671,6 +712,17 @@ Return ONLY valid JSON with no additional text or markdown.`
 
   let lastError: unknown
 
+  if (SCREENR_DEBUG_ENABLED) {
+    logGradeInfo('Preparing OpenRouter request', requestId, {
+      fileName,
+      model: getOpenRouterModel(),
+      hasApiKey: hasOpenRouterApiKey(),
+      resumeLength: safeResumeText.length,
+      jobTitleLength: safeJobTitle.length,
+      jobDescriptionLength: safeJobDescription.length,
+    })
+  }
+
   for (let attempt = 1; attempt <= OPENROUTER_MAX_ATTEMPTS; attempt += 1) {
     try {
       const completionResponse = await fetch(OPENROUTER_API_URL, {
@@ -693,6 +745,13 @@ Return ONLY valid JSON with no additional text or markdown.`
 
       if (!completionResponse.ok) {
         const errorBody = await completionResponse.text()
+        logGradeError('OpenRouter request failed', requestId, {
+          fileName,
+          attempt,
+          status: completionResponse.status,
+          model: getOpenRouterModel(),
+          body: truncateForLog(errorBody),
+        })
         throw new Error(`OpenRouter request failed with status ${completionResponse.status}: ${errorBody}`)
       }
 
@@ -700,6 +759,11 @@ Return ONLY valid JSON with no additional text or markdown.`
       const responseText = extractOpenRouterTextContent(completion.choices?.[0]?.message)
 
       if (!responseText.trim()) {
+        logGradeError('OpenRouter returned empty content', requestId, {
+          fileName,
+          attempt,
+          model: getOpenRouterModel(),
+        })
         throw new Error('OpenRouter returned an empty response')
       }
 
@@ -714,6 +778,14 @@ Return ONLY valid JSON with no additional text or markdown.`
       }
       cleanedResponse = cleanedResponse.trim()
       cleanedResponse = extractJsonObject(cleanedResponse)
+
+      if (SCREENR_DEBUG_ENABLED) {
+        logGradeInfo('OpenRouter returned parseable JSON payload', requestId, {
+          fileName,
+          attempt,
+          preview: truncateForLog(cleanedResponse, 250),
+        })
+      }
 
       const parsed = JSON.parse(cleanedResponse)
       const email = parsed.email && isValidEmail(parsed.email)
@@ -745,6 +817,14 @@ Return ONLY valid JSON with no additional text or markdown.`
     } catch (error) {
       lastError = error
 
+      if (SCREENR_DEBUG_ENABLED) {
+        logGradeWarn('OpenRouter grading attempt failed', requestId, {
+          fileName,
+          attempt,
+          message: error instanceof Error ? error.message : String(error),
+        })
+      }
+
       if (attempt === OPENROUTER_MAX_ATTEMPTS || !isRetryableOpenRouterFailure(error)) {
         break
       }
@@ -754,7 +834,12 @@ Return ONLY valid JSON with no additional text or markdown.`
   }
 
   const message = lastError instanceof Error ? lastError.message : 'Unknown error'
-  console.error('AI response parsing failed:', message)
+  logGradeError('AI response parsing failed', requestId, {
+    fileName,
+    message,
+    model: getOpenRouterModel(),
+    hasApiKey: hasOpenRouterApiKey(),
+  })
   throw new ProcessingError(ErrorCode.AI_ERROR, fileName, message)
 }
 
@@ -849,6 +934,12 @@ function successResponse(results: GradedResume[], timings?: RequestTimingSummary
   return NextResponse.json({ success: true, results }, { headers })
 }
 
+function successResponseWithRequestId(results: GradedResume[], requestId: string, timings?: RequestTimingSummary): NextResponse<ApiResponse> {
+  const headers = withRequestId(timings ? createTimingHeaders(timings) : undefined, requestId)
+
+  return NextResponse.json({ success: true, results }, { headers })
+}
+
 /**
  * Creates an error response from an APIError
  * 
@@ -871,10 +962,27 @@ function errorResponse(error: APIError, timings?: RequestTimingSummary): NextRes
   )
 }
 
+function errorResponseWithRequestId(error: APIError, requestId: string, timings?: RequestTimingSummary): NextResponse<ApiResponse> {
+  const headers = withRequestId(timings ? createTimingHeaders(timings) : undefined, requestId)
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      },
+    },
+    { status: error.statusCode, headers }
+  )
+}
+
 async function processResumeFile(
   queuedFile: QueuedFile,
   jobTitle: string,
-  jobDescription: string
+  jobDescription: string,
+  requestId: string
 ): Promise<ProcessedResumeResult> {
   const { file, index } = queuedFile
 
@@ -883,6 +991,11 @@ async function processResumeFile(
     const buffer = Buffer.from(arrayBuffer)
 
     if (!isValidPDF(buffer)) {
+      logGradeWarn('Rejected invalid PDF signature', requestId, {
+        fileName: file.name,
+        fileSize: file.size,
+      })
+
       return {
         index,
         result: createErrorResumeResult(file.name, 'Invalid PDF', 'File is not a valid PDF document'),
@@ -894,6 +1007,11 @@ async function processResumeFile(
     const { result: resumeText, durationMs: pdfExtractionMs } = await measureAsync(() => extractTextFromPDF(buffer))
 
     if (!resumeText || resumeText.trim().length < 50) {
+      logGradeWarn('PDF text extraction returned insufficient content', requestId, {
+        fileName: file.name,
+        extractedLength: resumeText.trim().length,
+      })
+
       return {
         index,
         result: createErrorResumeResult(file.name, 'No Text Found', 'Could not extract readable text from this PDF'),
@@ -906,7 +1024,8 @@ async function processResumeFile(
       resumeText,
       jobTitle,
       jobDescription,
-      file.name
+      file.name,
+      requestId
     ))
 
     return {
@@ -916,6 +1035,20 @@ async function processResumeFile(
       aiGradingMs,
     }
   } catch (error) {
+    if (error instanceof ProcessingError) {
+      logGradeError('Resume processing failed', requestId, {
+        fileName: file.name,
+        errorCode: error.code,
+        message: error.message,
+        details: error.details,
+      })
+    } else {
+      logGradeError('Unexpected resume processing failure', requestId, {
+        fileName: file.name,
+        error,
+      })
+    }
+
     return {
       index,
       result: error instanceof ProcessingError
@@ -945,10 +1078,19 @@ async function processResumeFile(
  * - error: { code, message, details? } (on failure)
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse>> {
+  const requestId = createRequestId()
   const requestStartedAt = performance.now()
   const timings = initializeRequestTimingSummary()
 
   try {
+    logGradeInfo('Grade request received', requestId, {
+      method: request.method,
+      contentLength: request.headers.get('content-length'),
+      hasApiKey: hasOpenRouterApiKey(),
+      model: getOpenRouterModel(),
+      debugEnabled: SCREENR_DEBUG_ENABLED,
+    })
+
     // Security: Check content-length header to prevent oversized uploads
     const contentLength = request.headers.get('content-length')
     if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE * MAX_FILES_PER_REQUEST * 1.5) {
@@ -992,6 +1134,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         `Maximum ${MAX_FILES_PER_REQUEST} files allowed`
       )
     }
+
+    logGradeInfo('Validated grade request payload', requestId, {
+      fileCount: filesRaw.length,
+      jobTitleLength: titleValidation.sanitized?.length,
+      jobDescriptionLength: descriptionValidation.sanitized?.length,
+    })
+
     timings.requestValidationMs = performance.now() - requestValidationStartedAt
 
     const orderedResults: Array<GradedResume | undefined> = new Array(filesRaw.length)
@@ -1025,7 +1174,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       (queuedFile) => processResumeFile(
         queuedFile,
         titleValidation.sanitized!,
-        descriptionValidation.sanitized!
+        descriptionValidation.sanitized!,
+        requestId
       )
     )
 
@@ -1036,21 +1186,39 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     }
 
     const results = orderedResults.filter((result): result is GradedResume => result !== undefined)
+    const successfulResults = results.filter((result) => result.overallScore > 0).length
+    const failedResults = results.length - successfulResults
     timings.processedFiles = queuedFiles.length
     timings.totalMs = performance.now() - requestStartedAt
 
-    return successResponse(results, timings)
+    logGradeInfo('Completed grade request', requestId, {
+      results: results.length,
+      successfulResults,
+      failedResults,
+      timings,
+    })
+
+    return successResponseWithRequestId(results, requestId, timings)
   } catch (error) {
     timings.totalMs = performance.now() - requestStartedAt
 
     // Handle known API errors
     if (error instanceof APIError) {
-      return errorResponse(error, timings)
+      logGradeWarn('Handled API error in grade request', requestId, {
+        errorCode: error.code,
+        message: error.message,
+        details: error.details,
+        timings,
+      })
+      return errorResponseWithRequestId(error, requestId, timings)
     }
     
     // Log unexpected errors but don't expose details to client
-    console.error('Unexpected error in grade API:', error)
-    return errorResponse(new APIError(ErrorCode.INTERNAL_ERROR), timings)
+    logGradeError('Unexpected error in grade API', requestId, {
+      error,
+      timings,
+    })
+    return errorResponseWithRequestId(new APIError(ErrorCode.INTERNAL_ERROR), requestId, timings)
   }
 }
 
