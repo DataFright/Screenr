@@ -1,0 +1,12 @@
+services:
+  screenr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      SCREENR_DEBUG: "true"
+      NODE_ENV: production

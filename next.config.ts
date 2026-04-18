@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ['pdf-parse', '@napi-rs/canvas', 'pdfjs-dist'],
+  turbopack: {
+    root: process.cwd(),
+  },
   
   // Enable React strict mode for better security practices
   reactStrictMode: true,

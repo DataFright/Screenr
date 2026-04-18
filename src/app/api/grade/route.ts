@@ -22,10 +22,12 @@
  * @module api/grade
  * @requires next/server - NextRequest, NextResponse
  * @requires OpenRouter chat completions API
- * @requires pdfjs-dist - PDF text extraction
+ * @requires pdf-parse - PDF text extraction
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { pathToFileURL } from 'node:url'
+import { CanvasFactory, getData as getPdfWorkerData, getPath as getPdfWorkerPath } from 'pdf-parse/worker'
 import {
   APIError,
   ErrorCode,
@@ -171,9 +173,10 @@ interface ProcessedResumeResult {
   aiGradingMs: number
 }
 
-type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs')
+type PdfParseModule = typeof import('pdf-parse')
 
-let pdfjsLibPromise: Promise<PdfJsModule> | null = null
+let pdfParseModulePromise: Promise<PdfParseModule> | null = null
+let isPdfParseWorkerConfigured = false
 
 // ============================================================================
 // SECURITY UTILITIES
@@ -293,6 +296,39 @@ function hasOpenRouterApiKey(): boolean {
 
 function getOpenRouterModel(): string {
   return process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL
+}
+
+function getOpenRouterModelCandidates(): string[] {
+  const configuredModel = getOpenRouterModel().trim()
+
+  if (!configuredModel) {
+    return [DEFAULT_OPENROUTER_MODEL]
+  }
+
+  const candidates = [configuredModel]
+
+  if (configuredModel.endsWith(':free')) {
+    candidates.push(configuredModel.slice(0, -':free'.length))
+  }
+
+  return [...new Set(candidates.filter(Boolean))]
+}
+
+function shouldFallbackOpenRouterModel(error: unknown, attemptedModel: string, configuredModel: string): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const normalizedAttemptedModel = attemptedModel.trim().toLowerCase()
+  const normalizedConfiguredModel = configuredModel.trim().toLowerCase()
+
+  if (normalizedAttemptedModel !== normalizedConfiguredModel || !normalizedAttemptedModel.endsWith(':free')) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+
+  return message.includes('status 404') && message.includes('no endpoints found')
 }
 
 function extractOpenRouterTextContent(message?: OpenRouterResponseMessage): string {
@@ -493,15 +529,32 @@ async function mapWithConcurrency<T, TResult>(
   return results
 }
 
-async function getPdfJsLib(): Promise<PdfJsModule> {
-  if (!pdfjsLibPromise) {
-    pdfjsLibPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((pdfjsLib) => {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
-      return pdfjsLib
-    })
+async function getPdfParseModule(): Promise<PdfParseModule> {
+  if (!pdfParseModulePromise) {
+    pdfParseModulePromise = import('pdf-parse')
   }
 
-  return pdfjsLibPromise
+  const pdfParseModule = await pdfParseModulePromise
+
+  if (!isPdfParseWorkerConfigured) {
+    const workerSource = getPdfWorkerPath() || getPdfWorkerData()
+
+    if (workerSource) {
+      const normalizedWorkerSource =
+        workerSource.startsWith('file:') ||
+        workerSource.startsWith('data:') ||
+        workerSource.startsWith('http://') ||
+        workerSource.startsWith('https://')
+          ? workerSource
+          : pathToFileURL(workerSource).href
+
+      pdfParseModule.PDFParse.setWorker(normalizedWorkerSource)
+    }
+
+    isPdfParseWorkerConfigured = true
+  }
+
+  return pdfParseModule
 }
 
 /**
@@ -556,78 +609,31 @@ function createErrorResumeResult(fileName: string, candidateName: string, explan
 
 /**
  * Extracts text content from a PDF buffer
- * Uses pdfjs-dist library for server-side PDF parsing
+ * Uses pdf-parse for server-side PDF parsing in Node runtimes
  * 
  * Security measures:
  * - Limits pages processed (max 50)
  * - Limits total text length (max 50,000 chars)
- * 
- * Memory optimization:
- * - Cleans up page resources after processing
- * - Uses Uint8Array view instead of copying data
- * - Early termination on text limit
  * 
  * @param buffer - PDF file buffer
  * @returns Extracted text content
  * @throws ProcessingError if PDF parsing fails
  */
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  let pdf: Awaited<ReturnType<typeof import('pdfjs-dist/legacy/build/pdf.mjs').getDocument>['promise']> | null = null
-  
   try {
-    const pdfjsLib = await getPdfJsLib()
-    
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(buffer),
-      verbosity: 0,
-      isEvalSupported: false,
-      useWorkerFetch: false,
-      useSystemFonts: true,
-    })
-    
-    pdf = await loadingTask.promise
-    
-    // Security: limit number of pages to process
-    const maxPages = Math.min(pdf.numPages, 50)
-    
-    let fullText = ''
-    for (let i = 1; i <= maxPages; i++) {
-      const page = await pdf.getPage(i)
-      
-      try {
-        const textContent = await page.getTextContent()
-        // Extract text from TextItem objects (filter out TextMarkedContent)
-        const pageText = textContent.items
-          .filter((item) => 'str' in item && typeof item.str === 'string')
-          .map((item) => (item as { str: string }).str)
-          .join(' ')
-        fullText += pageText + '\n'
-        
-        // Security: stop if text exceeds limit
-        if (fullText.length > MAX_TEXT_LENGTH) {
-          fullText = fullText.slice(0, MAX_TEXT_LENGTH)
-          break
-        }
-      } finally {
-        // Clean up page resources to free memory
-        page.cleanup()
-      }
+    const { PDFParse } = await getPdfParseModule()
+    const parser = new PDFParse({ data: buffer, CanvasFactory })
+
+    try {
+      const textResult = await parser.getText()
+      return textResult.text.slice(0, MAX_TEXT_LENGTH).trim()
+    } finally {
+      await parser.destroy()
     }
-    
-    return fullText.trim()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('PDF parsing failed:', message)
     throw new ProcessingError(ErrorCode.PDF_PARSE_ERROR, 'unknown.pdf', message)
-  } finally {
-    // Clean up PDF document resources
-    if (pdf) {
-      try {
-        pdf.destroy()
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
   }
 }
 
@@ -711,11 +717,14 @@ Grade the candidate from 0-100 in:
 Return ONLY valid JSON with no additional text or markdown.`
 
   let lastError: unknown
+  const configuredModel = getOpenRouterModel()
+  const candidateModels = getOpenRouterModelCandidates()
 
   if (SCREENR_DEBUG_ENABLED) {
     logGradeInfo('Preparing OpenRouter request', requestId, {
       fileName,
-      model: getOpenRouterModel(),
+      model: configuredModel,
+      candidateModels,
       hasApiKey: hasOpenRouterApiKey(),
       resumeLength: safeResumeText.length,
       jobTitleLength: safeJobTitle.length,
@@ -723,121 +732,145 @@ Return ONLY valid JSON with no additional text or markdown.`
     })
   }
 
-  for (let attempt = 1; attempt <= OPENROUTER_MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const completionResponse = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
-        headers: {
-          Authorization: `Bearer ${getOpenRouterApiKey()}`,
-          'Content-Type': 'application/json',
-          'X-Title': OPENROUTER_APP_NAME,
-        },
-        body: JSON.stringify({
-          model: getOpenRouterModel(),
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          reasoning: { enabled: true }
+  for (const candidateModel of candidateModels) {
+    for (let attempt = 1; attempt <= OPENROUTER_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        const completionResponse = await fetch(OPENROUTER_API_URL, {
+          method: 'POST',
+          signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
+          headers: {
+            Authorization: `Bearer ${getOpenRouterApiKey()}`,
+            'Content-Type': 'application/json',
+            'X-Title': OPENROUTER_APP_NAME,
+          },
+          body: JSON.stringify({
+            model: candidateModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            reasoning: { enabled: true }
+          })
         })
-      })
 
-      if (!completionResponse.ok) {
-        const errorBody = await completionResponse.text()
-        logGradeError('OpenRouter request failed', requestId, {
-          fileName,
-          attempt,
-          status: completionResponse.status,
-          model: getOpenRouterModel(),
-          body: truncateForLog(errorBody),
-        })
-        throw new Error(`OpenRouter request failed with status ${completionResponse.status}: ${errorBody}`)
-      }
-
-      const completion = await completionResponse.json() as OpenRouterResponse
-      const responseText = extractOpenRouterTextContent(completion.choices?.[0]?.message)
-
-      if (!responseText.trim()) {
-        logGradeError('OpenRouter returned empty content', requestId, {
-          fileName,
-          attempt,
-          model: getOpenRouterModel(),
-        })
-        throw new Error('OpenRouter returned an empty response')
-      }
-
-      let cleanedResponse = responseText.trim()
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.slice(7)
-      } else if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.slice(3)
-      }
-      if (cleanedResponse.endsWith('```')) {
-        cleanedResponse = cleanedResponse.slice(0, -3)
-      }
-      cleanedResponse = cleanedResponse.trim()
-      cleanedResponse = extractJsonObject(cleanedResponse)
-
-      if (SCREENR_DEBUG_ENABLED) {
-        logGradeInfo('OpenRouter returned parseable JSON payload', requestId, {
-          fileName,
-          attempt,
-          preview: truncateForLog(cleanedResponse, 250),
-        })
-      }
-
-      const parsed = JSON.parse(cleanedResponse)
-      const email = parsed.email && isValidEmail(parsed.email)
-        ? sanitizeString(parsed.email, 254)
-        : ''
-      const phone = parsed.phone && isValidPhone(parsed.phone)
-        ? sanitizeString(parsed.phone, 20)
-        : ''
-
-      return {
-        fileName: sanitizeString(fileName, MAX_FILENAME_LENGTH),
-        candidateName: sanitizeString(parsed.candidateName || 'Unknown Candidate', 100),
-        email,
-        phone,
-        overallScore: clampScore(parsed.overallScore),
-        professionalism: {
-          score: clampScore(parsed.professionalism?.score),
-          explanation: sanitizeString(parsed.professionalism?.explanation || 'No explanation provided', 200)
-        },
-        qualifications: {
-          score: clampScore(parsed.qualifications?.score),
-          explanation: sanitizeString(parsed.qualifications?.explanation || 'No explanation provided', 200)
-        },
-        workExperience: {
-          score: clampScore(parsed.workExperience?.score),
-          explanation: sanitizeString(parsed.workExperience?.explanation || 'No explanation provided', 200)
+        if (!completionResponse.ok) {
+          const errorBody = await completionResponse.text()
+          logGradeError('OpenRouter request failed', requestId, {
+            fileName,
+            attempt,
+            status: completionResponse.status,
+            model: candidateModel,
+            body: truncateForLog(errorBody),
+          })
+          throw new Error(`OpenRouter request failed with status ${completionResponse.status}: ${errorBody}`)
         }
-      }
-    } catch (error) {
-      lastError = error
 
-      if (SCREENR_DEBUG_ENABLED) {
-        logGradeWarn('OpenRouter grading attempt failed', requestId, {
-          fileName,
-          attempt,
-          message: error instanceof Error ? error.message : String(error),
-        })
-      }
+        const completion = await completionResponse.json() as OpenRouterResponse
+        const responseText = extractOpenRouterTextContent(completion.choices?.[0]?.message)
 
-      if (attempt === OPENROUTER_MAX_ATTEMPTS || !isRetryableOpenRouterFailure(error)) {
-        break
-      }
+        if (!responseText.trim()) {
+          logGradeError('OpenRouter returned empty content', requestId, {
+            fileName,
+            attempt,
+            model: candidateModel,
+          })
+          throw new Error('OpenRouter returned an empty response')
+        }
 
-      await delay(OPENROUTER_RETRY_DELAY_MS * attempt)
+        let cleanedResponse = responseText.trim()
+        if (cleanedResponse.startsWith('```json')) {
+          cleanedResponse = cleanedResponse.slice(7)
+        } else if (cleanedResponse.startsWith('```')) {
+          cleanedResponse = cleanedResponse.slice(3)
+        }
+        if (cleanedResponse.endsWith('```')) {
+          cleanedResponse = cleanedResponse.slice(0, -3)
+        }
+        cleanedResponse = cleanedResponse.trim()
+        cleanedResponse = extractJsonObject(cleanedResponse)
+
+        if (SCREENR_DEBUG_ENABLED) {
+          logGradeInfo('OpenRouter returned parseable JSON payload', requestId, {
+            fileName,
+            attempt,
+            model: candidateModel,
+            preview: truncateForLog(cleanedResponse, 250),
+          })
+        }
+
+        const parsed = JSON.parse(cleanedResponse)
+        const email = parsed.email && isValidEmail(parsed.email)
+          ? sanitizeString(parsed.email, 254)
+          : ''
+        const phone = parsed.phone && isValidPhone(parsed.phone)
+          ? sanitizeString(parsed.phone, 20)
+          : ''
+
+        return {
+          fileName: sanitizeString(fileName, MAX_FILENAME_LENGTH),
+          candidateName: sanitizeString(parsed.candidateName || 'Unknown Candidate', 100),
+          email,
+          phone,
+          overallScore: clampScore(parsed.overallScore),
+          professionalism: {
+            score: clampScore(parsed.professionalism?.score),
+            explanation: sanitizeString(parsed.professionalism?.explanation || 'No explanation provided', 200)
+          },
+          qualifications: {
+            score: clampScore(parsed.qualifications?.score),
+            explanation: sanitizeString(parsed.qualifications?.explanation || 'No explanation provided', 200)
+          },
+          workExperience: {
+            score: clampScore(parsed.workExperience?.score),
+            explanation: sanitizeString(parsed.workExperience?.explanation || 'No explanation provided', 200)
+          }
+        }
+      } catch (error) {
+        lastError = error
+
+        if (SCREENR_DEBUG_ENABLED) {
+          logGradeWarn('OpenRouter grading attempt failed', requestId, {
+            fileName,
+            attempt,
+            model: candidateModel,
+            message: error instanceof Error ? error.message : String(error),
+          })
+        }
+
+        if (attempt === OPENROUTER_MAX_ATTEMPTS || !isRetryableOpenRouterFailure(error)) {
+          break
+        }
+
+        await delay(OPENROUTER_RETRY_DELAY_MS * attempt)
+      }
     }
+
+    if (candidateModel !== configuredModel) {
+      break
+    }
+
+    if (candidateModels.length > 1 && shouldFallbackOpenRouterModel(lastError, candidateModel, configuredModel)) {
+      const nextCandidateModel = candidateModels.find((model) => model !== candidateModel)
+
+      if (nextCandidateModel) {
+        logGradeWarn('Retrying with OpenRouter StepFun fallback model alias', requestId, {
+          fileName,
+          configuredModel,
+          fallbackModel: nextCandidateModel,
+        })
+        continue
+      }
+    }
+
+    break
   }
 
   const message = lastError instanceof Error ? lastError.message : 'Unknown error'
   logGradeError('AI response parsing failed', requestId, {
     fileName,
     message,
-    model: getOpenRouterModel(),
+    model: configuredModel,
+    candidateModels,
     hasApiKey: hasOpenRouterApiKey(),
   })
   throw new ProcessingError(ErrorCode.AI_ERROR, fileName, message)

@@ -53,7 +53,7 @@ Screenr is a modern web application designed to help HR professionals and hiring
 
 | Feature | Description |
 |---------|-------------|
-| **AI-Powered Grading** | Evaluates resumes using the StepFun model through OpenRouter |
+| **AI-Powered Grading** | Evaluates resumes using the StepFun 3.5 Flash free model through OpenRouter |
 | **Multi-Criteria Scoring** | Three evaluation dimensions with weighted overall score |
 | **Batch Processing** | Upload up to 10 resumes simultaneously |
 | **Smart Ranking** | Automatic ranking by overall score with visual badges |
@@ -80,6 +80,28 @@ Screenr is a modern web application designed to help HR professionals and hiring
 ---
 
 ## 🆕 What's New in v1.1.0
+
+### Docker-Verified Production Test Path
+
+The app now has a repeatable local production-style verification path using Docker:
+
+- `docker compose up -d --build` starts the standalone production bundle on `http://localhost:3000`
+- The standard Cypress suite has been verified against the Dockerized app: **9 specs, 70 tests, 70 passing**
+- This is now the preferred way to reproduce runtime issues locally before redeploying to a hosted platform
+
+### Standalone PDF Runtime Fixes
+
+The grading route was updated so PDF parsing works correctly in standalone and containerized runtimes:
+
+- `pdf-parse` is used for server-side text extraction
+- pdf worker setup is configured explicitly for standalone execution
+- required runtime dependencies are preserved in the standalone bundle for Docker and other production-like runs
+
+### Validation And Test Stability Improvements
+
+- The **Grade Resumes** button now stays disabled until files, job title, and job description are all present
+- Stable upload test hooks were added so Cypress no longer depends on ambiguous `input[type="file"]` selectors
+- File upload and error-handling Cypress specs now pass cleanly against the Dockerized app
 
 ### Test Mode Bypass
 
@@ -125,7 +147,7 @@ Multi-layer PDF validation to detect fake/malicious files:
 - **Styling**: Tailwind CSS 4 with shadcn/ui components
 
 ### Libraries
-- **PDF Processing**: pdfjs-dist for server-side text extraction
+- **PDF Processing**: pdf-parse with standalone worker configuration for server-side text extraction
 - **AI Integration**: OpenRouter using `stepfun/step-3.5-flash:free`
 - **Toast Notifications**: Sonner
 - **Theme Management**: next-themes
@@ -172,13 +194,15 @@ npm run lint      # Run ESLint
 npm run test      # Run API + E2E suites
 npm run test:api  # Run all API shell suites
 npm run test:e2e  # Run all Cypress suites
-npm run test:load # Run load tests
+npm run test:load # Run long load tests
 npm run test:performance # Run long performance and load verification
 npm run report:test # Regenerate the current test report summary
 npm run build     # Build for production
 npm run start     # Start standalone production server
 npm run verify:release # Full release gate: lint, tests, performance, build, report
 ```
+
+For routine local verification, the long-running performance paths are usually skipped because they were taking too long and causing the overall run to time out. Run `test:load`, `test:performance`, and other long-duration performance checks only when you explicitly want latency or stress data.
 
 ---
 
@@ -189,7 +213,7 @@ npm run verify:release # Full release gate: lint, tests, performance, build, rep
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `OPENROUTER_API_KEY` | Yes | Authenticates grading requests to OpenRouter |
-| `OPENROUTER_MODEL` | No | Overrides the default StepFun model |
+| `OPENROUTER_MODEL` | No | Overrides the default OpenRouter model |
 | `STEP_KEY` | Optional fallback | Backward-compatible alias for the API key |
 
 ### Release Gate
@@ -208,12 +232,71 @@ That workflow verifies:
 - The standalone production build completes
 - The summary report is regenerated in `tests/reports/test-coverage-report.md`
 
+For day-to-day development, this release gate is intentionally heavier than the standard Docker smoke pass. The long-running performance and load checks are still available, but they are not part of the normal Docker verification loop because they were taking too long and causing routine runs to time out.
+
 ### Deployment Notes
 
 - The app is built with `output: "standalone"` and can be started with `npm run start`.
 - `X-Test-Mode` is disabled automatically in production.
 - Rate limiting is currently in-memory. For multi-instance deployment, replace it with a shared store such as Redis.
 - Batch grading is functionally stable, but large multi-resume requests are still dominated by upstream AI latency.
+
+### Docker Testing
+
+For local production-style deployment testing, build and run the app with Docker instead of redeploying to a hosting platform for each change.
+
+Prerequisites:
+
+- Docker Desktop or a compatible Docker engine
+- A local `.env.local` file with `OPENROUTER_API_KEY`
+
+Run the containerized app:
+
+```bash
+docker compose up --build
+```
+
+That workflow:
+
+- Builds the standalone Next.js production output inside the image
+- Starts the app on `http://localhost:3000`
+- Loads runtime environment variables from `.env.local`
+- Enables temporary server-side diagnostics with `SCREENR_DEBUG=true`
+
+Recommended Docker verification pass:
+
+```bash
+docker compose up -d --build
+node ./node_modules/cypress/bin/cypress run --headless --config baseUrl=http://localhost:3000
+docker compose down
+```
+
+Latest verified result for that Docker pass:
+
+- Cypress E2E: **9 specs, 70 tests, 70 passing**
+- Verified against the production-style container, not the dev server
+
+Docker verification intentionally does **not** include the longest-running performance and load paths by default. Those checks were taking too long and causing routine verification runs to time out.
+
+Current Docker caveats:
+
+- `compose.yaml` runs with `NODE_ENV=production`, so the `X-Test-Mode` rate-limit bypass is disabled
+- shell-based API and load suites can therefore hit production throttling unless they are run in a dedicated test configuration
+- the long performance path should be treated as an explicit opt-in run, not part of the normal Docker smoke test
+
+Stop the stack:
+
+```bash
+docker compose down
+```
+
+Rebuild after code changes:
+
+```bash
+docker compose up --build
+```
+
+This is useful for isolating application and OpenRouter issues from platform-specific deployment concerns such as Vercel runtime behavior or env injection.
 
 ---
 
@@ -503,13 +586,22 @@ Screenr has a comprehensive test suite with API, Cypress, load, and performance 
 | **API (Shell)** | 13 | 118 | ✅ All passing |
 | **Load Tests** | 1 | 6 | ✅ All passing |
 
+### Standard Verification vs Long-Running Checks
+
+There are two practical testing modes in this repo:
+
+- **Standard verification**: lint plus the main Cypress pack. This is the fast path used for normal local and Docker validation.
+- **Long-running verification**: API performance, Cypress performance batch, and load tests. These are still supported, but they are commonly skipped during normal runs because they were taking too long and causing the full workflow to time out.
+
+When a report or rerun notes that performance/load checks were skipped, that skip is intentional rather than accidental.
+
 ### E2E Tests (Cypress) - 9 Specs, 70 Tests
 
 | Suite | Tests | Focus Area |
 |-------|-------|------------|
 | Suite 1: Page Load | 8 | Initial render, sections, button states |
 | Suite 2: Form Validation | 8 | Input handling, clear function |
-| Suite 3: File Upload | 8 | Single/multiple uploads, file list |
+| Suite 3: File Upload | 10 | Single/multiple uploads, file list |
 | Suite 4: Accessibility | 8 | A11y compliance, ARIA |
 | Suite 5: Responsive | 8 | Mobile, tablet, desktop layouts |
 | Suite 6: Dark Mode | 10 | Toggle, persistence, localStorage |

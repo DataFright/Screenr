@@ -21,6 +21,7 @@ import 'cypress-file-upload'
  */
 describe('Suite 7: Error Handling Tests', () => {
   const uploadOptions = { force: true }
+  const fileInputSelector = '[data-testid="resume-file-input"]'
 
   beforeEach(() => {
     cy.visit('/')
@@ -43,7 +44,7 @@ describe('Suite 7: Error Handling Tests', () => {
     cy.log('Testing error display for empty job title')
     
     // Upload a file but leave title empty
-    cy.get('input[type="file"]').selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
+    cy.get(fileInputSelector).selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
     cy.get('textarea[placeholder*="Describe the role"]').type('Job description here')
     
     cy.contains('button', 'Grade Resumes').should('be.disabled')
@@ -54,7 +55,7 @@ describe('Suite 7: Error Handling Tests', () => {
     cy.log('Testing error display for empty job description')
     
     // Upload file and fill title only
-    cy.get('input[type="file"]').selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
+    cy.get(fileInputSelector).selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
     cy.get('input[placeholder*="Software Engineer"]').type('Software Engineer')
     
     cy.contains('button', 'Grade Resumes').should('be.disabled')
@@ -72,7 +73,7 @@ describe('Suite 7: Error Handling Tests', () => {
     cy.get('textarea[placeholder*="Describe the role"]').type('Job description here')
 
     // Add file
-    cy.get('input[type="file"]').selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
+    cy.get(fileInputSelector).selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
     
     // Should be able to submit once all required inputs are present
     cy.contains('button', 'Grade Resumes').should('not.be.disabled')
@@ -84,7 +85,7 @@ describe('Suite 7: Error Handling Tests', () => {
     
     cy.get('input[placeholder*="Software Engineer"]').type('Software Engineer')
     cy.get('textarea[placeholder*="Describe the role"]').type('Job description here')
-    cy.get('input[type="file"]').selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
+    cy.get(fileInputSelector).selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
 
     cy.contains('button', 'Grade Resumes').should('not.be.disabled')
     cy.contains('button', 'Clear All').click()
@@ -98,7 +99,7 @@ describe('Suite 7: Error Handling Tests', () => {
     // Fill all fields
     cy.get('input[placeholder*="Software Engineer"]').type('Software Engineer')
     cy.get('textarea[placeholder*="Describe the role"]').type('Job description')
-    cy.get('input[type="file"]').selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
+    cy.get(fileInputSelector).selectFile('cypress/fixtures/test-data/resumes/01_senior_dev_excellent.pdf', uploadOptions)
     
     // Click clear all
     cy.contains('button', 'Clear All').click()

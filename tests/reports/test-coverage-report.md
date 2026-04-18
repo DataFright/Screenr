@@ -13,6 +13,7 @@
 - Non-long API shell suites: rerun successfully, with suite `08` intentionally skipped because it is the long performance suite
 - Batch/integration tests now fail unless each uploaded resume gets a real returned grade
 - Performance comparison remains captured for `1 x ~1MB` and `10 x ~1MB`
+- Long-running performance/load checks remain intentionally skipped in routine reruns because they were taking too long and causing the overall workflow to time out
 
 ### Current Verified Status
 
@@ -21,7 +22,7 @@
 | Lint | ✅ | `eslint .` passed |
 | Cypress E2E | ✅ | 9 specs, 70 tests, 0 failures |
 | API shell suites | ✅ Fast set passing | Suites 01-07 and 09-13 rerun; suite 08 skipped intentionally as the long performance suite |
-| Load tests | Not rerun | Skipped intentionally to avoid super long runs |
+| Load tests | Not rerun | Skipped intentionally because the long-running path was taking too long and causing the workflow to time out |
 
 ---
 
@@ -84,7 +85,7 @@ After those fixes, these non-long suites were rerun and transcript-verified:
 | 12 - Test Mode | 8 | ✅ |
 | 13 - PDF Validation | 12 | ✅ |
 
-Suite `08 - Performance` was not rerun in this pass because it is part of the intentionally skipped super-long test path.
+Suite `08 - Performance` was not rerun in this pass because it is part of the intentionally skipped long-running test path that was causing the overall run to time out.
 
 The integration and performance-oriented API assertions were also tightened so successful multi-file scenarios now require a returned non-error grade for each uploaded resume, not just a matching result count.
 

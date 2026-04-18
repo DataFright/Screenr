@@ -17,6 +17,9 @@
     "report:test": "bash tests/scripts/generate-coverage-report.sh",
     "verify:release": "npm run lint && npm run test && npm run test:performance && npm run build && npm run report:test"
   },
+  "overrides": {
+    "@swc/helpers": "0.5.21"
+  },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

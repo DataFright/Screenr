@@ -34,7 +34,7 @@ describe('Suite 4: Accessibility Tests', () => {
 
   it('Test 4.2: Should have accessible file upload with label', () => {
     cy.log('Checking file upload accessibility')
-    cy.get('input[type="file"]').should('have.attr', 'id')
+    cy.get('[data-testid="resume-file-input"]').should('have.attr', 'id')
     cy.get('label[for="file-upload"]').should('exist')
     cy.log('File upload has proper label')
   })

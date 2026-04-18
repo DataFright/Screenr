@@ -572,6 +572,7 @@ export default function ResumeGrader() {
                     onChange={handleFileChange}
                     className="hidden"
                     id="file-upload"
+                    data-testid="resume-file-input"
                     aria-label="Upload PDF resumes"
                   />
                   <label
@@ -590,7 +591,7 @@ export default function ResumeGrader() {
 
                   {/* File List */}
                   {files.length > 0 && (
-                    <ScrollArea className="h-40 rounded-md border">
+                    <ScrollArea className="h-40 rounded-md border" data-testid="uploaded-files-list">
                       <div className="p-2 space-y-2">
                         {files.map((file, index) => (
                           <div
@@ -625,7 +626,7 @@ export default function ResumeGrader() {
             <div className="flex gap-3">
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading || files.length === 0}
+                disabled={isLoading || files.length === 0 || !jobTitle.trim() || !jobDescription.trim()}
                 className="flex-1 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 dark:from-emerald-900 dark:to-emerald-800 dark:hover:from-emerald-950 dark:hover:to-emerald-900 text-white shadow-lg"
                 size="lg"
               >
