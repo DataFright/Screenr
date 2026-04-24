@@ -2,7 +2,7 @@
  * @fileoverview Main application page for Screenr - AI-powered resume screening tool
  * 
  * This component provides the primary user interface for:
- * - Uploading resume PDF files (up to 10 files, 10MB each)
+ * - Uploading resume PDF files (up to 4 files, 1MB each)
  * - Entering job details (title and description)
  * - Triggering AI-powered resume grading
  * - Viewing ranked results with detailed scores
@@ -110,10 +110,10 @@ interface ApiResponse {
 // ============================================================================
 
 /** Maximum number of files that can be uploaded at once */
-const MAX_FILES = 10
+const MAX_FILES = 4
 
-/** Maximum file size in bytes (10MB) */
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+/** Maximum file size in bytes (1MB) */
+const MAX_FILE_SIZE = 1 * 1024 * 1024
 
 /** Allowed MIME types for file uploads */
 const ALLOWED_TYPES = ['application/pdf']
@@ -128,7 +128,7 @@ const ALLOWED_TYPES = ['application/pdf']
  */
 const ERROR_MESSAGES: Record<string, string> = {
   RATE_LIMIT_EXCEEDED: 'Too many requests. Please wait a moment and try again.',
-  FILE_TOO_LARGE: 'One or more files exceed the 10MB limit.',
+  FILE_TOO_LARGE: 'One or more files exceed the 1MB limit.',
   INVALID_FILE_TYPE: 'Only PDF files are allowed.',
   MISSING_FIELD: 'Please fill in all required fields.',
   INVALID_PDF: 'One or more files are not valid PDF documents.',
@@ -192,7 +192,7 @@ export default function ResumeGrader() {
         continue
       }
       if (file.size > MAX_FILE_SIZE) {
-        errors.push(`${file.name}: File exceeds 10MB limit`)
+        errors.push(`${file.name}: File exceeds 1MB limit`)
         continue
       }
       if (file.size < 100) {
@@ -548,7 +548,7 @@ export default function ResumeGrader() {
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-full">
                     <Star className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-emerald-700 dark:text-emerald-300 font-medium">10MB per file</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-medium">1MB per file</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-full">
                     <AlertCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -584,7 +584,7 @@ export default function ResumeGrader() {
                       {isDragActive ? 'Drop PDF files here' : 'Click to upload or drag and drop'}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      PDF files only (max 10MB each)
+                      PDF files only (max 1MB each)
                     </span>
                   </label>
                 </div>
