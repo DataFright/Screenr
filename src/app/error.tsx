@@ -41,7 +41,8 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  // Log the error to console for debugging
+  // Next.js passes a stable digest for grouping server-render errors.
+  // Logging both message + digest makes production debugging easier.
   useEffect(() => {
     console.error('Application error:', error)
   }, [error])
@@ -69,6 +70,7 @@ export default function Error({
           )}
           {/* Retry button - attempts to recover from the error */}
           <Button 
+            // reset() asks Next.js to re-render the segment that failed.
             onClick={reset} 
             className="w-full bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white"
           >

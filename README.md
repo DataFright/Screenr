@@ -55,10 +55,17 @@ Screenr is a modern web application designed to help HR professionals and hiring
 |---------|-------------|
 | **AI-Powered Grading** | Evaluates resumes using the StepFun 3.5 Flash free model through OpenRouter |
 | **Multi-Criteria Scoring** | Three evaluation dimensions with weighted overall score |
-| **Batch Processing** | Upload up to 10 resumes simultaneously |
+| **Batch Processing** | Upload up to 4 resumes simultaneously (public web app limit) |
 | **Smart Ranking** | Automatic ranking by overall score with visual badges |
 | **CSV Export** | Download results for further analysis |
 | **Dark Mode** | Full light/dark theme support |
+
+### Public Web App Limits
+
+- Maximum files per grading request: **4 PDFs**
+- Maximum file size: **1MB per PDF**
+
+These are the limits enforced in the deployed web experience that most users interact with.
 
 ### Evaluation Criteria
 
@@ -369,7 +376,7 @@ curl -X POST http://localhost:3000/api/grade \
 |-----------|------|----------|-------------|
 | `jobTitle` | string | Yes | Target job title (2-200 chars) |
 | `jobDescription` | string | Yes | Full job description (10-2000 chars) |
-| `files` | File[] | Yes | PDF resumes (max 10, 10MB each) |
+| `files` | File[] | Yes | PDF resumes (public web app: max 4 files, 1MB each) |
 
 #### Response
 
@@ -424,8 +431,9 @@ function isValidPDF(buffer: Buffer): boolean {
 
 | Constraint | Limit | Purpose |
 |------------|-------|---------|
-| Max file size | 10MB | Prevent DoS via large files |
-| Max files per request | 10 | Prevent resource exhaustion |
+| Max file size (public web app) | 1MB | Keep upload/grading UX reliable for deployed users |
+| Max files per request (public web app) | 4 | Keep batch grading predictable in the deployed UX |
+| API hard limit (self-host/test paths) | 10 files, 10MB each | Additional guardrails used outside the public web UI |
 | Min file size | 100 bytes | Detect empty/corrupted files |
 | Max text length | 50,000 chars | Prevent memory issues |
 | Max filename length | 255 chars | Prevent buffer overflows |
@@ -495,7 +503,7 @@ APIError (Base)
     "message": "File size exceeds the maximum allowed limit",
     "details": {
       "filename": "resume.pdf",
-      "maxSize": "10MB"
+      "maxSize": "1MB"
     }
   }
 }
@@ -514,7 +522,7 @@ Screenr is optimized for safe batch processing and predictable request handling,
 | Health check | < 100ms | Met in API/load suites |
 | Page load | < 1s | Met in Cypress/API suites |
 | Single resume (~1MB) | < 30s | ~21.7s |
-| Batch of 10 resumes (~1MB each) | < 30s | ~140s |
+| Internal benchmark: 10 resumes (~1MB each, API path) | < 30s | ~140s |
 | Full load runner | Pass | Passing |
 
 ### Current Capacity Notes
@@ -522,9 +530,10 @@ Screenr is optimized for safe batch processing and predictable request handling,
 | Metric | Value | Notes |
 |--------|-------|-------|
 | **Concurrent Users** | 50+ | Load runner has passed at 50 concurrent requests |
-| **Max Files per Request** | 10 | Hard limit enforced by API |
-| **Max File Size** | 10MB | Per file limit |
-| **Max Total Upload** | ~150MB | 10 files × 10MB + form overhead |
+| **Max Files per Request (public web app)** | 4 | User-facing limit in deployed UI |
+| **Max File Size (public web app)** | 1MB | User-facing per-file limit in deployed UI |
+| **Max Total Upload (public web app)** | ~4MB | 4 files × 1MB + form overhead |
+| **API Hard Limit (self-host/test paths)** | 10 files, 10MB each | Current server-side cap in the grading route |
 | **Max PDF Pages** | 50 | Per file, prevents timeout |
 | **Rate Limit (Grade API)** | 5/min | Per IP, bypassed only outside production test runs |
 
@@ -539,6 +548,7 @@ Source artifact: `tests/reports/cypress-performance-batch-latest.md`
 
 ### Interpretation
 
+- The deployed product intentionally limits uploads to 4 files at 1MB each for a stable user experience.
 - Large batches are reliable but not yet inside a 30 second UX target.
 - The close alignment between UI and API timings shows the backend grading call dominates the total latency.
 - For first production deployment, treat large-batch latency as a known operational limitation rather than a correctness blocker.
@@ -562,7 +572,7 @@ Source artifact: `tests/reports/cypress-performance-batch-latest.md`
 | 1 PDF | 20ms | ✓ |
 | 3 PDFs | 24ms | ✓ |
 | 5 PDFs | 34ms | ✓ |
-| **10 PDFs (max)** | **38ms** | **✓** |
+| **10 PDFs (internal API benchmark max)** | **38ms** | **✓** |
 
 #### Memory Stress Test
 

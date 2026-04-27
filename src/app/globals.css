@@ -1,8 +1,17 @@
+/*
+  Global Styles Entry Point
+  - Loads Tailwind + animation utilities
+  - Defines token mapping for shadcn/theme variables
+  - Sets light/dark design tokens
+*/
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Use `.dark` class from next-themes for dark mode variants. */
 @custom-variant dark (&:is(.dark *));
 
+/* Expose CSS custom properties as Tailwind theme tokens. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -43,6 +52,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Light theme tokens (default). */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -78,6 +88,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* Dark theme token overrides when `.dark` is present on html/body. */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -112,6 +123,7 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Base element defaults shared across the app. */
 @layer base {
   * {
     @apply border-border outline-ring/50;
